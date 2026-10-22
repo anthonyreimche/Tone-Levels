@@ -6,7 +6,6 @@
   "author": "Anthony Reimche",
   "main": "dist/index.js",
   "license": "GPL-3.0-or-later",
-  "categories": ["Develop", "Color"],
   "keywords": ["gimp", "levels", "tone-levels", "histogram", "black-point", "white-point", "gamma", "eyedropper", "auto-levels"],
   "repository": "anthonyreimche/Tone-Levels",
   "minAppVersion": "3.0.0"
