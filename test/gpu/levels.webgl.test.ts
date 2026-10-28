@@ -5,7 +5,9 @@
 //  • the inline GLSL compiles and links inside the develop shader on a real
 //    GLSL ES 3.00 driver, with the host's uniform/helper namespacing applied;
 //  • at the defaults the stage is a bit-exact no-op, on both process versions;
-//  • the rendered pixels equal the model's levelsPixel for GIMP's edits.
+//  • the rendered pixels equal the model's levelsPixel for GIMP's edits;
+//  • a mask's copy of the stage applies the mask's levels inside the mask
+//    only, leaving every pixel outside it as the photo's own levels left it.
 //
 // The stage's input is the display colour after the host's tone chain, which
 // carries an 8-bit tone-curve LUT (about 1/512 of drift even at identity), so
@@ -19,6 +21,7 @@ import { describe, expect, it } from "vitest";
 import { levelsStage } from "@tl/stage";
 import { DEFAULT_PARAMS, levelsPixel, withChannel, type Channel, type ChannelLevels, type LevelsParams } from "@tl/model";
 import { bagPatch } from "@tl/params";
+import { defaultMaskAdjustments, type Mask } from "@/catalog/types";
 import {
   LINEAR_PROBE_PIPELINE,
   type Frame,
@@ -64,13 +67,16 @@ interface Comparison {
 const CORNERS = [-1, 1];
 const reference = (rgb: [number, number, number], p: LevelsParams) => levelsPixel(rgb, p).map(clamp01);
 
-function compare(on: Frame, off: Frame, params: LevelsParams): Comparison {
+/** The GPU frame against the model, over the columns `inside` picks (all by default). */
+function compare(on: Frame, off: Frame, params: LevelsParams, inside = (_x: number) => true): Comparison {
   let se = 0;
   let max = 0;
   let change = 0;
   let worst = "";
-  const n = W * H * 3;
+  let n = 0;
   for (let p = 0; p < W * H; p++) {
+    if (!inside(p % W)) continue;
+    n += 3;
     const o = p * 4;
     const c: [number, number, number] = [off.data[o], off.data[o + 1], off.data[o + 2]];
     const centre = reference(c, params);
@@ -136,6 +142,15 @@ function frameOf(stages: ReturnType<typeof builtinStages>, processVersion: numbe
   });
 }
 
+// A linear gradient whose step sits at u = 0.5: the right half is covered.
+const RIGHT_HALF: Mask["components"][number] = {
+  id: "right",
+  kind: "linear",
+  mode: "add",
+  invert: false,
+  linear: { x0: 0.5, y0: 0, x1: 0.5001, y1: 0 },
+};
+
 describe("Tone Levels stage on the real renderer", () => {
   it("is a bit-exact no-op at the defaults on both process versions", () => {
     // Renderers share one context and a nested one's dispose() tears down GL
@@ -172,6 +187,44 @@ describe("Tone Levels stage on the real renderer", () => {
         expect(s.max).toBeLessThan(MAX_ABS_ERROR);
         expect(s.rmse).toBeLessThan(MAX_RMS_ERROR);
       }
+    });
+  });
+
+  it("applies a mask's levels inside the mask, and the photo's everywhere else", () => {
+    const [name, params] = cases[0];
+    const mask: Mask = {
+      id: "m",
+      name: "Mask",
+      visible: true,
+      invert: false,
+      opacity: 100,
+      adj: defaultMaskAdjustments(),
+      panels: ["tone-levels.panel"],
+      bag: bagPatch(params),
+      components: [RIGHT_HALF],
+    };
+    withRenderer({ stages: [...builtinStages(), levelsStage()], pipeline: LINEAR_PROBE_PIPELINE }, (renderer) => {
+      renderer.setImage(SCENE);
+      renderer.setContributedParams(bagPatch(DEFAULT_PARAMS));
+      renderer.setParams(identityParams({ processVersion: 2 }));
+      const off = renderer.captureFloatFrame();
+      renderer.setParams(identityParams({ processVersion: 2, masks: [mask] }));
+      const on = renderer.captureFloatFrame();
+      expect(off).not.toBeNull();
+      expect(on).not.toBeNull();
+
+      // Columns either side of the step, clear of the pixel it straddles.
+      const left = (x: number) => x < W / 2 - 1;
+      const right = (x: number) => x > W / 2;
+      for (let p = 0; p < W * H; p++) {
+        if (!left(p % W)) continue;
+        for (let ch = 0; ch < 3; ch++) expect(on!.data[p * 4 + ch]).toBe(off!.data[p * 4 + ch]);
+      }
+      const s = compare(on!, off!, params, right);
+      console.log(`[tl-gpu] masked ${name}: error rms ${s.rmse.toExponential(2)}, max ${s.max.toExponential(2)} at ${s.worst}`);
+      expect(s.changeRms).toBeGreaterThan(1e-3);
+      expect(s.max).toBeLessThan(MAX_ABS_ERROR);
+      expect(s.rmse).toBeLessThan(MAX_RMS_ERROR);
     });
   });
 });

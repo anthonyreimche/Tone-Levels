@@ -4,7 +4,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { activate, deactivate } from "../src/index";
 import { DEFAULT_PARAMS } from "../src/model";
-import { STAGE_ID, qualified, readParams } from "../src/params";
+import { LevelsPanel } from "../src/Panel";
+import { STAGE_ID, UNIFORM_KEYS, qualified, readParams } from "../src/params";
 import { store } from "../src/store";
 import { fakeApi } from "./support/fake-api";
 
@@ -22,6 +23,13 @@ describe("activate", () => {
       defaultDock: { module: "develop", direction: "right" },
     });
     expect(rig.slots).toMatchObject([{ id: "tone-levels.picker", slot: "develop-canvas-overlay" }]);
+  });
+
+  it("offers the panel in masks, owning every key it writes", () => {
+    const rig = fakeApi();
+    activate(rig.api);
+    expect(rig.panels[0].mask?.component).toBe(LevelsPanel);
+    expect([...(rig.panels[0].mask?.owns ?? [])].sort()).toEqual(UNIFORM_KEYS.map(qualified).sort());
   });
 
   it("docks the panel after core Tone Curve (order 6)", () => {

@@ -26,6 +26,12 @@ Input Levels or its eyedroppers do it for you.
   eyedropper, and they are unavailable while the Crop tool or another core
   tool or picker is active. The pickers beside the input fields act on the
   selected channel only.
+- **In masks:** add Tone Levels to a mask from the Masking panel's Adjust tab
+  to apply a second set of levels inside that mask only. The mask's Levels
+  have the same controls as the panel's except the histogram, Auto Input
+  Levels and the eyedroppers, which measure the whole photo. It needs the
+  current processing: on a photo edited in an earlier Safelight, use Update
+  processing first.
 
 Each colour channel runs first, then Value, which applies the same curve to
 all three channels. The numbers show GIMP's 0–255 scale, and a typed number

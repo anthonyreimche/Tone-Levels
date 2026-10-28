@@ -318,6 +318,44 @@ describe("LevelsPanel", () => {
   });
 });
 
+// The same panel edits a mask in the Masking panel's Adjust tab. What measures
+// or picks from the whole photo drives the photo's own Levels, so it isn't there.
+describe("LevelsPanel in a mask", () => {
+  function mountInMask(maskBag: Record<string, unknown> = {}, photoBag: Record<string, unknown> = {}) {
+    rig = fakeApi(photoBag);
+    const mask = rig.inMask(maskBag);
+    initRuntime(rig.api);
+    initStore();
+    render(React.createElement(LevelsPanel));
+    return mask;
+  }
+
+  it("shows the mask's levels, not the photo's", () => {
+    mountInMask({ [qualified("valueGamma")]: 2 }, { [qualified("valueGamma")]: 0.5 });
+    expect((screen.getByLabelText("Gamma") as HTMLInputElement).value).toBe("2");
+  });
+
+  it("writes a handle drag to the mask, leaves the photo's levels alone, and commits once", () => {
+    const mask = mountInMask();
+    const handles = bar("Input levels handles");
+    fireEvent.pointerDown(handles, { clientX: 51, pointerId: 1, button: 0 });
+    fireEvent.pointerMove(handles, { clientX: 76.5, pointerId: 1 });
+    fireEvent.pointerUp(handles, { pointerId: 1 });
+    expect(readParams(mask.getState().bag).channels.value.lowInput).toBeCloseTo(0.3, 12);
+    expect(rig.develop.getState().paramBag).toEqual({});
+    expect(rig.commits).toEqual(["mask: Tone Levels input levels"]);
+  });
+
+  it("leaves out the histogram, the eyedroppers and Auto Input Levels", () => {
+    mountInMask();
+    expect(screen.queryByText("Auto Input Levels")).toBeNull();
+    expect(screen.queryByLabelText("Pick black point for the selected channel")).toBeNull();
+    expect(screen.queryByLabelText("Pick grey point for all channels")).toBeNull();
+    expect(screen.queryByLabelText("Histogram")).toBeNull();
+    expect(rig.captures).toEqual([]);
+  });
+});
+
 describe("Auto Input Levels before a sample has landed", () => {
   /** Every renderPhotoFrame stays pending until the test settles it. */
   function pendingFrames() {

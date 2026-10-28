@@ -1,12 +1,12 @@
 {
   "id": "tone-levels",
   "name": "Tone Levels",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A port of GIMP's Levels tool: set the black, grey and white input points and the output range per channel over the image's histogram, with GIMP's Auto Input Levels and black, grey and white eyedroppers.",
   "author": "Anthony Reimche",
   "main": "dist/index.js",
   "license": "GPL-3.0-or-later",
   "keywords": ["gimp", "levels", "tone-levels", "histogram", "black-point", "white-point", "gamma", "eyedropper", "auto-levels"],
   "repository": "anthonyreimche/Tone-Levels",
-  "minAppVersion": "3.0.0"
+  "minAppVersion": "3.1.0"
 }

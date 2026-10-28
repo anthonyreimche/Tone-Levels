@@ -83,5 +83,8 @@ export function levelsStage(): ProcessingStageContribution {
     uniforms: uniforms(),
     presetScope: "global",
     space: { encoding: "perceptual" },
+    // A mask's copy runs at the defaults until its levels move, so the gate
+    // keeps an untouched mask bit-exact too.
+    mask: { maskable: true },
   };
 }

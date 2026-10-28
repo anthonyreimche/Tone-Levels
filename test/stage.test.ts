@@ -33,13 +33,17 @@ describe("levels stage", () => {
   const stage = levelsStage();
   const source = `${stage.glsl}\n${stage.helpers ?? ""}`;
 
+  it("runs again inside masks", () => {
+    expect(stage.mask).toEqual({ maskable: true });
+  });
+
   it("is one inline display-adjust stage on the perceptual encoding", () => {
     expect(stage.id).toBe(STAGE_ID);
     expect(stage.name).toBe("Tone Levels");
     expect(stage.phase).toBe("display-adjust");
     expect(stage.space).toEqual({ encoding: "perceptual" });
     expect(stage.presetScope).toBe("global");
-    expect(Object.keys(stage).sort()).toEqual(["glsl", "helpers", "id", "name", "phase", "presetScope", "space", "uniforms"]);
+    expect(Object.keys(stage).sort()).toEqual(["glsl", "helpers", "id", "mask", "name", "phase", "presetScope", "space", "uniforms"]);
     expect(source).not.toMatch(/\btexture\s*\(|\breadPrev\b|\bstageResult\b/);
   });
 

@@ -6,7 +6,7 @@
 // panel (Panel.ts) and the eyedropper overlay (picker.ts).
 
 import { LevelsPanel } from "./Panel";
-import { EXT_ID, STAGE_ID, resetPatch } from "./params";
+import { EXT_ID, STAGE_ID, UNIFORM_KEYS, qualified, resetPatch } from "./params";
 import { PickerOverlay } from "./picker";
 import { api, initRuntime } from "./runtime";
 import type { SafelightAPI } from "./safelight";
@@ -37,6 +37,8 @@ export function activate(host: SafelightAPI): void {
     // After core Tone Curve (order 6) by design, not by a registration-order tie.
     defaultDock: { module: "develop", direction: "right", order: 6.5, width: 268 },
     onReset: reset,
+    // The same panel edits a mask's levels in the Masking panel's Adjust tab.
+    mask: { component: LevelsPanel, owns: UNIFORM_KEYS.map(qualified) },
   });
   host.registerSlot({ id: PICKER_ID, slot: "develop-canvas-overlay", component: PickerOverlay, order: 60 });
 }

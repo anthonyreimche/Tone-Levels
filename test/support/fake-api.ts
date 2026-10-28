@@ -11,6 +11,7 @@ import type {
   DevelopStoreState,
   NumberInputProps,
   PanelContribution,
+  ParamScope,
   ProcessingStageContribution,
   RowProps,
   SafelightAPI,
@@ -104,6 +105,9 @@ export interface Rig {
   slots: SlotContribution[];
   unregisteredStages: string[];
   unregisteredSlots: string[];
+  /** Puts what renders from here on inside a mask holding `bag`, as the core's
+   *  Masking panel does; returns the mask's store. */
+  inMask(bag?: Record<string, unknown>): StoreApi<{ bag: Record<string, unknown> }>;
 }
 
 /** `bitmap` answers captureFrame and renderPhotoFrame; without it they never settle. */
@@ -116,6 +120,7 @@ export function fakeApi(bag: Record<string, unknown> = {}, bitmap?: () => Promis
   const slots: SlotContribution[] = [];
   const unregisteredStages: string[] = [];
   const unregisteredSlots: string[] = [];
+  let mask: StoreApi<{ bag: Record<string, unknown> }> | null = null;
   const develop: StoreApi<DevelopStoreState> = create<DevelopStoreState>()((set) => ({
     photoId: "p1",
     params: PARAMS,
@@ -131,6 +136,20 @@ export function fakeApi(bag: Record<string, unknown> = {}, bitmap?: () => Promis
       commits.push(label);
     },
   }));
+  const photoScope: ParamScope = {
+    maskId: null,
+    getParam: (key) => develop.getState().paramBag[key],
+    getParams: () => develop.getState().paramBag,
+    setParams: (patch) => develop.getState().setDynParams(patch),
+    commit: (label) => void develop.getState().commitEdit(label),
+  };
+  const maskScope = (store: StoreApi<{ bag: Record<string, unknown> }>): ParamScope => ({
+    maskId: "mask-1",
+    getParam: (key) => store.getState().bag[key],
+    getParams: () => store.getState().bag,
+    setParams: (patch) => store.setState((s) => ({ bag: { ...s.bag, ...patch } })),
+    commit: (label) => void commits.push(`mask: ${label}`),
+  });
   const api: SafelightAPI = {
     version: 1,
     extensionId: "tone-levels",
@@ -156,7 +175,21 @@ export function fakeApi(bag: Record<string, unknown> = {}, bitmap?: () => Promis
         measures.push({ photoId, paramBag: paramBag ?? {} });
         return bitmap ? bitmap() : new Promise<ImageBitmap | null>(() => undefined);
       },
+      // Subscribed, as the core's scopes are, so a write re-renders. A rig is
+      // inside a mask or not for every render it makes, so the hook called is too.
+      useParamScope: () => {
+        if (mask) {
+          mask((s) => s.bag);
+          return maskScope(mask);
+        }
+        develop((s) => s.paramBag);
+        return photoScope;
+      },
     },
   };
-  return { api, develop, commits, captures, measures, stages, panels, slots, unregisteredStages, unregisteredSlots };
+  const inMask = (bag: Record<string, unknown> = {}) => {
+    mask = create<{ bag: Record<string, unknown> }>()(() => ({ bag }));
+    return mask;
+  };
+  return { api, develop, commits, captures, measures, stages, panels, slots, unregisteredStages, unregisteredSlots, inMask };
 }

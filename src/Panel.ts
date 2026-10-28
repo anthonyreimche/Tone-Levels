@@ -4,6 +4,11 @@
 // commit; buttons, toggles and the mode switch commit at once. A field shows
 // what is typed until it applies, because the bag only ever holds the clamped
 // value and a controlled number input rewrites its text to the prop.
+//
+// It edits whatever useParamScope hands it: the photo's bag in the dock, a
+// mask's in the Masking panel's Adjust tab. The histogram, the eyedroppers and
+// Auto Input Levels measure the photo before its own Levels, so they show only
+// in the dock.
 
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { GradientBar, HandleBar, HistogramView, inputBarGradient, outputBarGradient } from "./Bars";
@@ -54,7 +59,8 @@ export function LevelsPanel() {
   const { useEffect, useMemo, useRef, useState } = api().react;
   const { Button, NumberInput, Row, Section, SegmentedControl, Select, Stack, Toggle, tokens } = api().ui;
   const dev = api().stores.useDevelopStore;
-  const paramBag = dev((s) => s.paramBag);
+  const scope = api().develop.useParamScope();
+  const inMask = scope.maskId !== null;
   const photoId = dev((s) => s.photoId);
   const measured = store()((s) => s.frame);
   const channel = store()((s) => s.channel);
@@ -63,9 +69,9 @@ export function LevelsPanel() {
   const typed = useRef<TypedEdit | null>(null);
   const [draft, setDraft] = useState<{ label: string; value: number } | null>(null);
 
-  useEffect(() => startLiveSampler(), []);
+  useEffect(() => (inMask ? undefined : startLiveSampler()), [inMask]);
 
-  const p = readParams(paramBag);
+  const p = readParams(scope.getParams());
   const ch = p.channels[channel];
   const frame = measured && measured.photoId === photoId ? measured.readback : null;
   const hist = useMemo(
@@ -73,11 +79,11 @@ export function LevelsPanel() {
     [frame, p.linear],
   );
 
-  // Drags outrun React's renders, so each change starts from the store's
-  // current bag rather than this render's snapshot.
-  const live = (): LevelsParams => readParams(dev.getState().paramBag);
-  const apply = (next: LevelsParams) => dev.getState().setDynParams(bagPatch(next));
-  const commit = (what: string) => void dev.getState().commitEdit(`Tone Levels ${what}`);
+  // Drags outrun React's renders, so each change starts from the bag the
+  // scope holds now rather than this render's snapshot.
+  const live = (): LevelsParams => readParams(scope.getParams());
+  const apply = (next: LevelsParams) => scope.setParams(bagPatch(next));
+  const commit = (what: string) => scope.commit(`Tone Levels ${what}`);
   const editChannel = (update: (c: ChannelLevels) => ChannelLevels) => {
     const current = live();
     apply(withChannel(current, channel, update(current.channels[channel])));
@@ -155,7 +161,7 @@ export function LevelsPanel() {
     commit("auto input levels");
   };
 
-  const gutter = (...children: ReturnType<typeof h>[]) =>
+  const gutter = (...children: (ReturnType<typeof h> | null)[]) =>
     h("div", { style: { padding: "0 5px", display: "flex", flexDirection: "column", gap: 2 } }, ...children);
 
   return h(
@@ -222,7 +228,7 @@ export function LevelsPanel() {
       Section,
       { title: "Input Levels" },
       gutter(
-        h(HistogramView, { bins: hist ? hist[channel] : null, scale, channel }),
+        inMask ? null : h(HistogramView, { bins: hist ? hist[channel] : null, scale, channel }),
         h(GradientBar, { background: inputBarGradient(p, channel), label: "Input levels" }),
         h(HandleBar, {
           label: "Input levels handles",
@@ -237,7 +243,7 @@ export function LevelsPanel() {
         h(
           Row,
           { gap: 2 },
-          pickButton("black", "channel"),
+          inMask ? null : pickButton("black", "channel"),
           field("Low input", shown(ch.lowInput), 1, (c, v) => ({ ...c, lowInput: clamp(v / DISPLAY_SCALE, 0, c.highInput) })),
         ),
         field("Gamma", Math.round(ch.gamma * 100) / 100, 0.01, (c, v) => ({ ...c, gamma: clamp(v, GAMMA_MIN, GAMMA_MAX) })),
@@ -245,7 +251,7 @@ export function LevelsPanel() {
           Row,
           { gap: 2 },
           field("High input", shown(ch.highInput), 1, (c, v) => ({ ...c, highInput: clamp(v / DISPLAY_SCALE, c.lowInput, 1) })),
-          pickButton("white", "channel"),
+          inMask ? null : pickButton("white", "channel"),
         ),
       ),
       h(Toggle, {
@@ -284,7 +290,7 @@ export function LevelsPanel() {
         },
       }),
     ),
-    h(
+    inMask ? null : h(
       Section,
       { title: "All Channels" },
       h(

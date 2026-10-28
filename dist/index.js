@@ -122,7 +122,7 @@ function ee(e, t, n, r) {
 		blue: s
 	};
 }
-function te(e, t) {
+function _(e, t) {
 	let n = 0;
 	for (let t = 0; t < e.length; t++) e[t] > n && (n = e[t]);
 	let r = new Float64Array(e.length), i = t === "log" ? n > 0 ? Math.log(n) : 1 : n;
@@ -134,39 +134,39 @@ function te(e, t) {
 	}
 	return r;
 }
-var _ = (e) => Math.round(e * 10) / 10;
-function ne(e, t, n) {
+var v = (e) => Math.round(e * 10) / 10;
+function te(e, t, n) {
 	let r = e.length, i = "";
 	for (let a = 0; a < r; a++) {
 		let o = e[a];
 		if (o <= 0) continue;
-		let s = _(a * t / r), c = _((a + 1) * t / r);
-		i += `M${s} ${n}V${_(n * (1 - o))}H${c}V${n}Z`;
+		let s = v(a * t / r), c = v((a + 1) * t / r);
+		i += `M${s} ${n}V${v(n * (1 - o))}H${c}V${n}Z`;
 	}
 	return i;
 }
 //#endregion
 //#region src/runtime.ts
-var v = null;
-function re(e) {
-	v = e;
+var y = null;
+function ne(e) {
+	y = e;
 }
-function y() {
-	if (!v) throw Error("[tone-levels] api() called before activate()");
-	return v;
+function b() {
+	if (!y) throw Error("[tone-levels] api() called before activate()");
+	return y;
 }
-function b(e, t, ...n) {
-	return y().react.createElement(e, t, ...n);
+function x(e, t, ...n) {
+	return b().react.createElement(e, t, ...n);
 }
 //#endregion
 //#region src/Bars.ts
-var x = {
+var S = {
 	value: "#ffffff",
 	red: "#ff0000",
 	green: "#00ff00",
 	blue: "#0000ff"
-}, S = (e) => Math.floor(r(e, 0, 1) * 255.999);
-function ie(e, t, n = 33) {
+}, C = (e) => Math.floor(r(e, 0, 1) * 255.999);
+function re(e, t, n = 33) {
 	let r = [];
 	for (let a = 0; a < n; a++) {
 		let o = a / (n - 1), [s, c, l] = t === "value" ? [
@@ -178,55 +178,55 @@ function ie(e, t, n = 33) {
 			i(e.channels.green, o),
 			i(e.channels.blue, o)
 		];
-		r.push(`rgb(${S(s)}, ${S(c)}, ${S(l)}) ${(o * 100).toFixed(2)}%`);
+		r.push(`rgb(${C(s)}, ${C(c)}, ${C(l)}) ${(o * 100).toFixed(2)}%`);
 	}
 	return `linear-gradient(to right, ${r.join(", ")})`;
 }
-function ae(e) {
-	return `linear-gradient(to right, #000000, ${x[e]})`;
+function ie(e) {
+	return `linear-gradient(to right, #000000, ${S[e]})`;
 }
-var C = 64;
-function oe({ bins: e, scale: t, channel: n }) {
-	let { useMemo: r } = y().react, { tokens: i } = y().ui, a = n === "value" ? i.textSecondary : x[n], o = r(() => e ? ne(te(e, t), 256, C) : null, [e, t]);
-	return b("svg", {
+var w = 64;
+function ae({ bins: e, scale: t, channel: n }) {
+	let { useMemo: r } = b().react, { tokens: i } = b().ui, a = n === "value" ? i.textSecondary : S[n], o = r(() => e ? te(_(e, t), 256, w) : null, [e, t]);
+	return x("svg", {
 		role: "img",
 		"aria-label": "Histogram",
-		viewBox: `0 0 256 ${C}`,
+		viewBox: `0 0 256 ${w}`,
 		preserveAspectRatio: "none",
 		style: {
 			display: "block",
 			width: "100%",
-			height: C,
+			height: w,
 			background: i.surface0,
 			border: `1px solid ${i.border}`,
 			boxSizing: "border-box"
 		}
-	}, o === null ? null : b("path", {
+	}, o === null ? null : x("path", {
 		d: o,
 		style: { fill: a }
 	}));
 }
-function se({ background: e, label: t }) {
-	return b("div", {
+function oe({ background: e, label: t }) {
+	return x("div", {
 		role: "img",
 		"aria-label": t,
 		style: {
 			height: 8,
 			background: e,
-			border: `1px solid ${y().ui.tokens.border}`
+			border: `1px solid ${b().ui.tokens.border}`
 		}
 	});
 }
-var w = [
+var se = [
 	"#000000",
 	"#808080",
 	"#ffffff"
 ];
 function ce({ label: e, positions: t, onDrag: n, onRelease: r }) {
-	let { useRef: i } = y().react, { tokens: a } = y().ui, o = i(null), s = (e) => h(e.clientX, e.currentTarget.getBoundingClientRect()), c = () => {
+	let { useRef: i } = b().react, { tokens: a } = b().ui, o = i(null), s = (e) => h(e.clientX, e.currentTarget.getBoundingClientRect()), c = () => {
 		o.current !== null && (o.current = null, r());
 	};
-	return b("div", {
+	return x("div", {
 		role: "group",
 		"aria-label": e,
 		style: {
@@ -246,7 +246,7 @@ function ce({ label: e, positions: t, onDrag: n, onRelease: r }) {
 			o.current !== null && (e.currentTarget.releasePointerCapture(e.pointerId), c());
 		},
 		onLostPointerCapture: c
-	}, ...t.map((e, t) => e === null ? null : b("svg", {
+	}, ...t.map((e, t) => e === null ? null : x("svg", {
 		key: t,
 		"data-handle": t,
 		"data-pos": e,
@@ -261,10 +261,10 @@ function ce({ label: e, positions: t, onDrag: n, onRelease: r }) {
 			overflow: "visible",
 			pointerEvents: "none"
 		}
-	}, b("path", {
+	}, x("path", {
 		d: "M5 0.5L9.5 8.5H0.5Z",
 		style: {
-			fill: w[t],
+			fill: se[t],
 			stroke: a.textSecondary,
 			strokeWidth: 1
 		}
@@ -342,22 +342,20 @@ var T = "tone-levels", E = `${T}.levels`, D = [
 	max: 1,
 	step: 1,
 	label: M[e]
-}))];
-P.map((e) => e.key);
-var F = new Map(P.map((e) => [e.key, e])), I = (e) => `${E}.${e}`;
-function L(e, t) {
-	let n = F.get(t);
+}))], F = P.map((e) => e.key), I = new Map(P.map((e) => [e.key, e])), L = (e) => `${E}.${e}`;
+function R(e, t) {
+	let n = I.get(t);
 	if (!n) throw Error(`[tone-levels] unknown key ${t}`);
-	let i = e[I(t)];
+	let i = e[L(t)];
 	return typeof i == "number" && Number.isFinite(i) ? r(i, n.min, n.max) : n.default;
 }
-function R(e) {
+function z(e) {
 	let t = (t) => ({
-		lowInput: L(e, N(t, "LowInput")),
-		highInput: L(e, N(t, "HighInput")),
-		gamma: L(e, N(t, "Gamma")),
-		lowOutput: L(e, N(t, "LowOutput")),
-		highOutput: L(e, N(t, "HighOutput"))
+		lowInput: R(e, N(t, "LowInput")),
+		highInput: R(e, N(t, "HighInput")),
+		gamma: R(e, N(t, "Gamma")),
+		lowOutput: R(e, N(t, "LowOutput")),
+		highOutput: R(e, N(t, "HighOutput"))
 	});
 	return {
 		channels: {
@@ -366,26 +364,26 @@ function R(e) {
 			green: t("green"),
 			blue: t("blue")
 		},
-		clampInput: L(e, "clampInput") > .5,
-		clampOutput: L(e, "clampOutput") > .5,
-		linear: L(e, "linear") > .5
+		clampInput: R(e, "clampInput") > .5,
+		clampOutput: R(e, "clampOutput") > .5,
+		linear: R(e, "linear") > .5
 	};
 }
 function le(t) {
 	let n = {};
-	for (let r of e) for (let e of D) n[I(N(r, e))] = t.channels[r][k[e]];
-	return n[I("clampInput")] = +!!t.clampInput, n[I("clampOutput")] = +!!t.clampOutput, n[I("linear")] = +!!t.linear, n;
+	for (let r of e) for (let e of D) n[L(N(r, e))] = t.channels[r][k[e]];
+	return n[L("clampInput")] = +!!t.clampInput, n[L("clampOutput")] = +!!t.clampOutput, n[L("linear")] = +!!t.linear, n;
 }
-function z() {
+function B() {
 	let e = {};
-	for (let t of P) e[I(t.key)] = t.default;
+	for (let t of P) e[L(t.key)] = t.default;
 	return e;
 }
 //#endregion
 //#region src/store.ts
-var B = null;
-function V() {
-	B = y().stores.create((e) => ({
+var V = null;
+function H() {
+	V = b().stores.create((e) => ({
 		frame: null,
 		channel: "value",
 		scale: "linear",
@@ -396,12 +394,12 @@ function V() {
 		setPicking: (t) => e({ picking: t })
 	}));
 }
-function H() {
-	if (!B) throw Error("[tone-levels] store() called before activate()");
-	return B;
+function U() {
+	if (!V) throw Error("[tone-levels] store() called before activate()");
+	return V;
 }
 var ue = `${E}.`;
-function U(e) {
+function W(e) {
 	if (!e.photoId) return null;
 	let t = {};
 	for (let n of Object.keys(e.paramBag)) n.startsWith(ue) || (t[n] = e.paramBag[n]);
@@ -411,25 +409,25 @@ function U(e) {
 		bag: t
 	};
 }
-function W(e, t) {
+function G(e, t) {
 	if (e.photoId !== t.photoId || e.params !== t.params) return !1;
 	let n = Object.keys(e.bag);
 	return n.length === Object.keys(t.bag).length && n.every((n) => Object.prototype.hasOwnProperty.call(t.bag, n) && e.bag[n] === t.bag[n]);
 }
-function G(e) {
-	let t = y(), n = t.stores.useDevelopStore.getState();
-	return t.develop.captureFrame(e ?? n.previewParams ?? n.params, { paramBag: z() });
-}
 function K(e) {
-	let t = y(), n = t.stores.useDevelopStore.getState();
+	let t = b(), n = t.stores.useDevelopStore.getState();
+	return t.develop.captureFrame(e ?? n.previewParams ?? n.params, { paramBag: B() });
+}
+function q(e) {
+	let t = b(), n = t.stores.useDevelopStore.getState();
 	return n.photoId ? t.develop.renderPhotoFrame(n.photoId, e ?? n.previewParams ?? n.params, {
 		...n.paramBag,
-		...z()
+		...B()
 	}) : Promise.resolve(null);
 }
-var q = null;
+var J = null;
 function de(e, t) {
-	return q ??= new OffscreenCanvas(e, t), q.width !== e && (q.width = e), q.height !== t && (q.height = t), q.getContext("2d", { willReadFrequently: !0 });
+	return J ??= new OffscreenCanvas(e, t), J.width !== e && (J.width = e), J.height !== t && (J.height = t), J.getContext("2d", { willReadFrequently: !0 });
 }
 function fe(e, t = 640) {
 	let { width: n, height: r } = e;
@@ -442,9 +440,9 @@ function fe(e, t = 640) {
 	}) : null;
 }
 async function pe() {
-	let e = U(y().stores.useDevelopStore.getState());
+	let e = W(b().stores.useDevelopStore.getState());
 	if (!e) return null;
-	let t = await K();
+	let t = await q();
 	if (!t) return null;
 	try {
 		let n = fe(t);
@@ -461,12 +459,12 @@ function me(e) {
 	let t = e.throttleMs ?? 150, n = !1, r = !1, i = !1, a = null, o = -Infinity, s = null, c = e.develop.getState(), l = !1, u = (t) => {
 		s = t?.signature ?? null, e.publish(t);
 	}, d = (e) => {
-		let t = U(e), n = U(c);
-		return e.paramBag !== c.paramBag && !!t && !!n && W(t, n);
+		let t = W(e), n = W(c);
+		return e.paramBag !== c.paramBag && !!t && !!n && G(t, n);
 	}, f = () => {
 		a = null;
-		let t = e.develop.getState(), d = U(t);
-		if (n || !d || !l && s && W(s, d)) return;
+		let t = e.develop.getState(), d = W(t);
+		if (n || !d || !l && s && G(s, d)) return;
 		l = !1, c = t;
 		let f = d.photoId, m = () => !n && e.develop.getState().photoId === f;
 		r = !0, o = Date.now(), e.capture(d.params).then((t) => {
@@ -512,13 +510,13 @@ function me(e) {
 }
 function he() {
 	return me({
-		develop: y().stores.useDevelopStore,
-		capture: (e) => K(e),
+		develop: b().stores.useDevelopStore,
+		capture: (e) => q(e),
 		readback: (e) => fe(e),
-		publish: (e) => H().getState().setFrame(e)
+		publish: (e) => U().getState().setFrame(e)
 	});
 }
-var J = [
+var Y = [
 	.2224884,
 	.71690369,
 	.06060791
@@ -571,7 +569,7 @@ function ve(e, t) {
 	for (let e of ge) r = o(r, e, _e(r.channels[e], t[e]));
 	return r;
 }
-function Y(e, t) {
+function X(e, t) {
 	switch (e) {
 		case "value": return Math.max(Math.max(t[0], t[1]), t[2]);
 		case "red": return t[0];
@@ -582,15 +580,15 @@ function Y(e, t) {
 function ye(e, n, i, a) {
 	if (i === "black") return {
 		...e,
-		lowInput: Y(n, a)
+		lowInput: X(n, a)
 	};
 	if (i === "white") return {
 		...e,
-		highInput: Y(n, a)
+		highInput: X(n, a)
 	};
-	let o = a[0] * J[0] + a[1] * J[1] + a[2] * J[2], s = e.highInput - e.lowInput;
+	let o = a[0] * Y[0] + a[1] * Y[1] + a[2] * Y[2], s = e.highInput - e.lowInput;
 	if (s <= 0) return e;
-	let c = Y(n, a) - e.lowInput;
+	let c = X(n, a) - e.lowInput;
 	if (c < 0) return e;
 	let l = c / s, u = o / s;
 	return u <= 1e-4 || u >= .9999 ? e : {
@@ -627,11 +625,11 @@ var Se = {
 	black: "#000000",
 	grey: "#808080",
 	white: "#ffffff"
-}, X = {
+}, we = {
 	black: "Black",
 	grey: "Grey",
 	white: "White"
-}, we = {
+}, Te = {
 	channel: {
 		black: "Pick black point for the selected channel",
 		grey: "Pick grey point for the selected channel",
@@ -642,97 +640,97 @@ var Se = {
 		grey: "Pick grey point for all channels",
 		white: "Pick white point for all channels"
 	}
-}, Te = (t) => e.find((e) => e === t) ?? "value", Z = (e) => Math.round(e * 255 * 10) / 10;
-function Ee() {
-	let { useEffect: n, useMemo: i, useRef: a, useState: c } = y().react, { Button: l, NumberInput: u, Row: h, Section: g, SegmentedControl: te, Select: _, Stack: ne, Toggle: v, tokens: re } = y().ui, x = y().stores.useDevelopStore, S = x((e) => e.paramBag), C = x((e) => e.photoId), w = H()((e) => e.frame), T = H()((e) => e.channel), E = H()((e) => e.scale), D = H()((e) => e.picking), O = a(null), [k, A] = c(null);
-	n(() => he(), []);
-	let j = R(S), M = j.channels[T], N = w && w.photoId === C ? w.readback : null, P = i(() => N ? ee(N.data, N.width, N.height, j.linear) : null, [N, j.linear]), F = () => R(x.getState().paramBag), I = (e) => x.getState().setDynParams(le(e)), L = (e) => void x.getState().commitEdit(`Tone Levels ${e}`), z = (e) => {
-		let t = F();
-		I(o(t, T, e(t.channels[T])));
-	}, B = (e) => {
-		let t = O.current;
-		t?.label === e && (O.current = null, A(null), z((e) => t.set(e, t.value)), L(e.toLowerCase()));
-	}, V = (e, t, n, r) => b(u, {
+}, Ee = (t) => e.find((e) => e === t) ?? "value", Z = (e) => Math.round(e * 255 * 10) / 10;
+function De() {
+	let { useEffect: n, useMemo: i, useRef: a, useState: c } = b().react, { Button: l, NumberInput: u, Row: h, Section: g, SegmentedControl: _, Select: v, Stack: te, Toggle: y, tokens: ne } = b().ui, S = b().stores.useDevelopStore, C = b().develop.useParamScope(), w = C.maskId !== null, se = S((e) => e.photoId), T = U()((e) => e.frame), E = U()((e) => e.channel), D = U()((e) => e.scale), O = U()((e) => e.picking), k = a(null), [A, j] = c(null);
+	n(() => w ? void 0 : he(), [w]);
+	let M = z(C.getParams()), N = M.channels[E], P = T && T.photoId === se ? T.readback : null, F = i(() => P ? ee(P.data, P.width, P.height, M.linear) : null, [P, M.linear]), I = () => z(C.getParams()), L = (e) => C.setParams(le(e)), R = (e) => C.commit(`Tone Levels ${e}`), B = (e) => {
+		let t = I();
+		L(o(t, E, e(t.channels[E])));
+	}, V = (e) => {
+		let t = k.current;
+		t?.label === e && (k.current = null, j(null), B((e) => t.set(e, t.value)), R(e.toLowerCase()));
+	}, H = (e, t, n, r) => x(u, {
 		"aria-label": e,
 		title: e,
-		value: k?.label === e ? k.value : t,
+		value: A?.label === e ? A.value : t,
 		step: n,
 		width: "52px",
 		onChange: (t) => {
-			O.current = {
+			k.current = {
 				label: e,
 				value: t,
 				set: r
-			}, A({
+			}, j({
 				label: e,
 				value: t
 			});
 		},
-		onBlur: () => B(e),
+		onBlur: () => V(e),
 		onKeyDown: (t) => {
-			t.key === "Enter" && B(e);
+			t.key === "Enter" && V(e);
 		}
-	}), ue = (e) => b("span", { style: {
+	}), ue = (e) => x("span", { style: {
 		display: "inline-block",
 		width: 9,
 		height: 9,
 		marginRight: 4,
 		verticalAlign: "-1px",
 		background: Ce[e],
-		border: `1px solid ${re.border}`
-	} }), G = (e, t, n) => {
-		let r = D?.point === e && D.scope === t;
-		return b(l, {
+		border: `1px solid ${ne.border}`
+	} }), K = (e, t, n) => {
+		let r = O?.point === e && O.scope === t;
+		return x(l, {
 			size: "sm",
 			active: r,
 			"aria-pressed": r,
-			title: `${we[t][e]} (Esc cancels)`,
-			"aria-label": we[t][e],
-			onClick: () => H().getState().setPicking(r ? null : {
+			title: `${Te[t][e]} (Esc cancels)`,
+			"aria-label": Te[t][e],
+			onClick: () => U().getState().setPicking(r ? null : {
 				point: e,
 				scope: t
 			})
 		}, ue(e), n ?? null);
-	}, K = async () => {
-		let e = U(x.getState());
+	}, q = async () => {
+		let e = W(S.getState());
 		if (!e) return;
-		let t = H().getState().frame, n = t && W(t.signature, e) ? t.readback : null;
+		let t = U().getState().frame, n = t && G(t.signature, e) ? t.readback : null;
 		if (!n) {
-			let e = await pe(), t = U(x.getState());
-			if (!e || !t || !W(e.signature, t)) return;
+			let e = await pe(), t = W(S.getState());
+			if (!e || !t || !G(e.signature, t)) return;
 			n = e.readback;
 		}
-		let r = F();
-		I(ve(r, ee(n.data, n.width, n.height, r.linear))), L("auto input levels");
-	}, q = (...e) => b("div", { style: {
+		let r = I();
+		L(ve(r, ee(n.data, n.width, n.height, r.linear))), R("auto input levels");
+	}, J = (...e) => x("div", { style: {
 		padding: "0 5px",
 		display: "flex",
 		flexDirection: "column",
 		gap: 2
 	} }, ...e);
-	return b(ne, {
+	return x(te, {
 		gap: 10,
 		style: { padding: "6px 8px 8px" }
-	}, b(h, { gap: 6 }, b("div", { style: {
+	}, x(h, { gap: 6 }, x("div", { style: {
 		flex: "1 1 auto",
 		minWidth: 0
-	} }, b(_, {
-		value: T,
+	} }, x(v, {
+		value: E,
 		ariaLabel: "Channel",
 		options: e.map((e) => ({
 			value: e,
 			label: Se[e]
 		})),
-		onChange: (e) => H().getState().setChannel(Te(e))
-	})), b(l, {
+		onChange: (e) => U().getState().setChannel(Ee(e))
+	})), x(l, {
 		size: "sm",
 		title: "Reset this channel's levels",
 		onClick: () => {
-			I(xe(F(), T)), L("reset channel");
+			L(xe(I(), E)), R("reset channel");
 		}
-	}, "Reset Channel")), b(h, { gap: 6 }, b("div", { style: { flex: "1 1 auto" } }, b(te, {
+	}, "Reset Channel")), x(h, { gap: 6 }, x("div", { style: { flex: "1 1 auto" } }, x(_, {
 		size: "sm",
-		value: j.linear ? "linear" : "perceptual",
+		value: M.linear ? "linear" : "perceptual",
 		options: [{
 			value: "perceptual",
 			label: "Perceptual",
@@ -744,14 +742,14 @@ function Ee() {
 		}],
 		onChange: (e) => {
 			let t = e === "linear";
-			t !== F().linear && (I({
-				...F(),
+			t !== I().linear && (L({
+				...I(),
 				linear: t
-			}), L(t ? "linear" : "perceptual"));
+			}), R(t ? "linear" : "perceptual"));
 		}
-	})), b(te, {
+	})), x(_, {
 		size: "sm",
-		value: E,
+		value: D,
 		options: [{
 			value: "linear",
 			label: "Lin",
@@ -761,76 +759,76 @@ function Ee() {
 			label: "Log",
 			title: "Logarithmic histogram"
 		}],
-		onChange: (e) => H().getState().setScale(e === "log" ? "log" : "linear")
-	})), b(g, { title: "Input Levels" }, q(b(oe, {
-		bins: P ? P[T] : null,
-		scale: E,
-		channel: T
-	}), b(se, {
-		background: ie(j, T),
+		onChange: (e) => U().getState().setScale(e === "log" ? "log" : "linear")
+	})), x(g, { title: "Input Levels" }, J(w ? null : x(ae, {
+		bins: F ? F[E] : null,
+		scale: D,
+		channel: E
+	}), x(oe, {
+		background: re(M, E),
 		label: "Input levels"
-	}), b(ce, {
+	}), x(ce, {
 		label: "Input levels handles",
-		positions: p(M),
-		onDrag: (e, t) => z((n) => d(n, s[e], t)),
-		onRelease: () => L("input levels")
-	})), b(h, {
+		positions: p(N),
+		onDrag: (e, t) => B((n) => d(n, s[e], t)),
+		onRelease: () => R("input levels")
+	})), x(h, {
 		gap: 4,
 		justify: "space-between"
-	}, b(h, { gap: 2 }, G("black", "channel"), V("Low input", Z(M.lowInput), 1, (e, t) => ({
+	}, x(h, { gap: 2 }, w ? null : K("black", "channel"), H("Low input", Z(N.lowInput), 1, (e, t) => ({
 		...e,
 		lowInput: r(t / 255, 0, e.highInput)
-	}))), V("Gamma", Math.round(M.gamma * 100) / 100, .01, (e, n) => ({
+	}))), H("Gamma", Math.round(N.gamma * 100) / 100, .01, (e, n) => ({
 		...e,
 		gamma: r(n, t, 10)
-	})), b(h, { gap: 2 }, V("High input", Z(M.highInput), 1, (e, t) => ({
+	})), x(h, { gap: 2 }, H("High input", Z(N.highInput), 1, (e, t) => ({
 		...e,
 		highInput: r(t / 255, e.lowInput, 1)
-	})), G("white", "channel"))), b(v, {
-		checked: j.clampInput,
+	})), w ? null : K("white", "channel"))), x(y, {
+		checked: M.clampInput,
 		label: "Clamp input",
 		onChange: (e) => {
-			I({
-				...F(),
+			L({
+				...I(),
 				clampInput: e
-			}), L("clamp input");
+			}), R("clamp input");
 		}
-	})), b(g, { title: "Output Levels" }, q(b(se, {
-		background: ae(T),
+	})), x(g, { title: "Output Levels" }, J(x(oe, {
+		background: ie(E),
 		label: "Output levels"
-	}), b(ce, {
+	}), x(ce, {
 		label: "Output levels handles",
-		positions: m(M),
-		onDrag: (e, t) => z((n) => f(n, e === 0 ? "low" : "high", t)),
-		onRelease: () => L("output levels")
-	})), b(h, {
+		positions: m(N),
+		onDrag: (e, t) => B((n) => f(n, e === 0 ? "low" : "high", t)),
+		onRelease: () => R("output levels")
+	})), x(h, {
 		gap: 4,
 		justify: "space-between"
-	}, V("Low output", Z(M.lowOutput), 1, (e, t) => ({
+	}, H("Low output", Z(N.lowOutput), 1, (e, t) => ({
 		...e,
 		lowOutput: r(t / 255, 0, 1)
-	})), V("High output", Z(M.highOutput), 1, (e, t) => ({
+	})), H("High output", Z(N.highOutput), 1, (e, t) => ({
 		...e,
 		highOutput: r(t / 255, 0, 1)
-	}))), b(v, {
-		checked: j.clampOutput,
+	}))), x(y, {
+		checked: M.clampOutput,
 		label: "Clamp output",
 		onChange: (e) => {
-			I({
-				...F(),
+			L({
+				...I(),
 				clampOutput: e
-			}), L("clamp output");
+			}), R("clamp output");
 		}
-	})), b(g, { title: "All Channels" }, b(l, {
+	})), w ? null : x(g, { title: "All Channels" }, x(l, {
 		size: "sm",
 		full: !0,
 		title: "Adjust levels for all channels automatically",
-		onClick: () => void K()
-	}, "Auto Input Levels"), b(h, { gap: 4 }, G("black", "all", X.black), G("grey", "all", X.grey), G("white", "all", X.white))));
+		onClick: () => void q()
+	}, "Auto Input Levels"), x(h, { gap: 4 }, K("black", "all", we.black), K("grey", "all", we.grey), K("white", "all", we.white))));
 }
 //#endregion
 //#region src/picker.ts
-function De(e, t, n, r, i) {
+function Oe(e, t, n, r, i) {
 	if (!i || n.width <= 0 || n.height <= 0 || i.w <= 0 || i.h <= 0) return null;
 	let a = r / n.width, o = ((e - n.left) * a - i.x) / i.w, s = ((t - n.top) * a - i.y) / i.h;
 	return o < 0 || o > 1 || s < 0 || s > 1 ? null : {
@@ -838,7 +836,7 @@ function De(e, t, n, r, i) {
 		y: s
 	};
 }
-function Oe(e, t, n, r, i, o) {
+function ke(e, t, n, r, i, o) {
 	let s = [
 		0,
 		0,
@@ -858,16 +856,16 @@ function Oe(e, t, n, r, i, o) {
 		s[2] / c
 	];
 }
-var ke = {
+var Ae = {
 	black: "black point",
 	grey: "grey point",
 	white: "white point"
 };
-function Ae(e, t) {
-	let n = y().stores.useDevelopStore.getState(), r = H().getState(), i = R(n.paramBag);
-	n.setDynParams(le(be(i, e.point, e.scope, r.channel, t))), n.commitEdit(`Tone Levels pick ${ke[e.point]}`), r.setPicking(null);
-}
 function je(e, t) {
+	let n = b().stores.useDevelopStore.getState(), r = U().getState(), i = z(n.paramBag);
+	n.setDynParams(le(be(i, e.point, e.scope, r.channel, t))), n.commitEdit(`Tone Levels pick ${Ae[e.point]}`), r.setPicking(null);
+}
+function Me(e, t) {
 	try {
 		let { width: n, height: r } = e;
 		if (n < 2 || r < 2) return null;
@@ -883,69 +881,69 @@ function je(e, t) {
 		e.close();
 	}
 }
-function Me(e, t) {
-	return H().getState().picking === e && y().stores.useDevelopStore.getState().photoId === t;
+function Ne(e, t) {
+	return U().getState().picking === e && b().stores.useDevelopStore.getState().photoId === t;
 }
-async function Ne(e, t, n, r, i) {
+async function Pe(e, t, n, r, i) {
 	try {
 		if (!n) return;
-		let a = y().stores.useDevelopStore.getState().photoId, o = De(e, t, n.getBoundingClientRect(), n.clientWidth, r);
+		let a = b().stores.useDevelopStore.getState().photoId, o = Oe(e, t, n.getBoundingClientRect(), n.clientWidth, r);
 		if (!o) return;
-		let s = je(await G(), o);
-		if (!s || !Me(i, a)) return;
-		let { linear: c } = R(y().stores.useDevelopStore.getState().paramBag), l = Oe(s.data, s.width, s.height, s.cx, s.cy, c);
-		l && Ae(i, l);
+		let s = Me(await K(), o);
+		if (!s || !Ne(i, a)) return;
+		let { linear: c } = z(b().stores.useDevelopStore.getState().paramBag), l = ke(s.data, s.width, s.height, s.cx, s.cy, c);
+		l && je(i, l);
 	} catch (e) {
 		console.warn("[tone-levels] pick failed:", e);
 	}
 }
-function Pe() {
-	let { useEffect: e, useRef: t } = y().react, n = H()((e) => e.picking), r = y().stores.useDevelopStore((e) => e.cropping), i = y().stores.useDevelopStore((e) => e.activeTool), a = y().stores.useDevelopStore((e) => e.wbPicking), o = y().stores.useDevelopStore((e) => e.hslPicking), s = y().develop.useDevelopOverlay(), c = t(null);
+function Fe() {
+	let { useEffect: e, useRef: t } = b().react, n = U()((e) => e.picking), r = b().stores.useDevelopStore((e) => e.cropping), i = b().stores.useDevelopStore((e) => e.activeTool), a = b().stores.useDevelopStore((e) => e.wbPicking), o = b().stores.useDevelopStore((e) => e.hslPicking), s = b().develop.useDevelopOverlay(), c = t(null);
 	return e(() => {
 		if (n === null) return;
 		let e = (e) => {
-			e.key === "Escape" && H().getState().setPicking(null);
+			e.key === "Escape" && U().getState().setPicking(null);
 		};
 		return window.addEventListener("keydown", e), () => window.removeEventListener("keydown", e);
-	}, [n]), n === null || r || i !== "none" || a || o ? null : b("div", {
+	}, [n]), n === null || r || i !== "none" || a || o ? null : x("div", {
 		ref: c,
 		style: {
 			position: "absolute",
 			inset: 0,
 			pointerEvents: "auto",
-			cursor: y().cursors.resolve("pick")
+			cursor: b().cursors.resolve("pick")
 		},
 		onPointerDown: (e) => {
-			e.button !== 0 || e.ctrlKey || e.metaKey || (e.preventDefault(), Ne(e.clientX, e.clientY, c.current, s.rect, n));
+			e.button !== 0 || e.ctrlKey || e.metaKey || (e.preventDefault(), Pe(e.clientX, e.clientY, c.current, s.rect, n));
 		}
 	});
 }
 //#endregion
 //#region src/stage.ts
-function Q(e) {
+function Ie(e) {
 	let t = e.toPrecision(10);
 	if (!t.includes("e")) return t.includes(".") ? t : `${t}.0`;
 	let [n, r] = t.split("e");
 	return `${n.includes(".") ? n : `${n}.0`}e${r}`;
 }
-var Fe = "\nfloat tlMap(float v, float lo, float hi, float ci, float ig, float olo, float ohi, float co) {\n  v = hi != lo ? (v - lo) / (hi - lo) : v - lo;\n  if (ci > 0.5) v = clamp(v, 0.0, 1.0);\n  if (ig != 1.0 && v > 0.0) v = pow(v, ig);\n  v = ohi >= olo ? v * (ohi - olo) + olo : olo - v * (olo - ohi);\n  if (co > 0.5) v = clamp(v, 0.0, 1.0);\n  return v;\n}\nvec3 tlDecode(vec3 y) {\n  vec3 a = abs(y);\n  return sign(y) * mix(a / 12.92, pow((a + 0.055) / 1.055, vec3(2.4)), step(0.04045, a));\n}\nvec3 tlEncode(vec3 x) {\n  vec3 a = abs(x);\n  return sign(x) * mix(a * 12.92, 1.055 * pow(a, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, a));\n}\n", Ie = (e) => {
+var Le = "\nfloat tlMap(float v, float lo, float hi, float ci, float ig, float olo, float ohi, float co) {\n  v = hi != lo ? (v - lo) / (hi - lo) : v - lo;\n  if (ci > 0.5) v = clamp(v, 0.0, 1.0);\n  if (ig != 1.0 && v > 0.0) v = pow(v, ig);\n  v = ohi >= olo ? v * (ohi - olo) + olo : olo - v * (olo - ohi);\n  if (co > 0.5) v = clamp(v, 0.0, 1.0);\n  return v;\n}\nvec3 tlDecode(vec3 y) {\n  vec3 a = abs(y);\n  return sign(y) * mix(a / 12.92, pow((a + 0.055) / 1.055, vec3(2.4)), step(0.04045, a));\n}\nvec3 tlEncode(vec3 x) {\n  vec3 a = abs(x);\n  return sign(x) * mix(a * 12.92, 1.055 * pow(a, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, a));\n}\n", Re = (e) => {
 	let t = P.find((t) => t.key === e);
 	if (!t) throw Error(`[tone-levels] no spec for ${e}`);
-	return `clamp(${e}, ${Q(t.min)}, ${Q(t.max)})`;
-}, $ = (e, t) => {
-	let n = (t) => Ie(`${e}${t}`);
+	return `clamp(${e}, ${Ie(t.min)}, ${Ie(t.max)})`;
+}, Q = (e, t) => {
+	let n = (t) => Re(`${e}${t}`);
 	return `tlMap(${t}, ${n("LowInput")}, ${n("HighInput")}, clampInput, 1.0 / ${n("Gamma")}, ${n("LowOutput")}, ${n("HighOutput")}, clampOutput)`;
-}, Le = `
+}, ze = `
 {
-  if (${P.map((e) => `${e.key} != ${Q(e.default)}`).join(" || ")}) {
+  if (${P.map((e) => `${e.key} != ${Ie(e.default)}`).join(" || ")}) {
     vec3 v = linear > 0.5 ? tlDecode(c) : c;
-    v = vec3(${$("red", "v.r")}, ${$("green", "v.g")}, ${$("blue", "v.b")});
-    v = vec3(${$("value", "v.r")}, ${$("value", "v.g")}, ${$("value", "v.b")});
+    v = vec3(${Q("red", "v.r")}, ${Q("green", "v.g")}, ${Q("blue", "v.b")});
+    v = vec3(${Q("value", "v.r")}, ${Q("value", "v.g")}, ${Q("value", "v.b")});
     c = linear > 0.5 ? tlEncode(v) : v;
   }
 }
 `;
-function Re() {
+function Be() {
 	return P.map((e) => ({
 		key: e.key,
 		glslType: "float",
@@ -958,56 +956,61 @@ function Re() {
 		label: e.label
 	}));
 }
-function ze() {
+function Ve() {
 	return {
 		id: E,
 		name: "Tone Levels",
 		phase: "display-adjust",
-		glsl: Le,
-		helpers: Fe,
-		uniforms: Re(),
+		glsl: ze,
+		helpers: Le,
+		uniforms: Be(),
 		presetScope: "global",
-		space: { encoding: "perceptual" }
+		space: { encoding: "perceptual" },
+		mask: { maskable: !0 }
 	};
 }
 //#endregion
 //#region src/index.ts
-var Be = `${T}.panel`, Ve = `${T}.picker`, He = null;
-function Ue() {
-	let e = y().stores.useDevelopStore.getState();
-	e.setDynParams(z()), e.commitEdit("Tone Levels reset");
+var He = `${T}.panel`, Ue = `${T}.picker`, $ = null;
+function We() {
+	let e = b().stores.useDevelopStore.getState();
+	e.setDynParams(B()), e.commitEdit("Tone Levels reset");
 }
-function We(e) {
-	re(e), V(), He = e, e.registerProcessingStage(ze()), e.registerPanel({
-		id: Be,
+function Ge(e) {
+	ne(e), H(), $ = e, e.registerProcessingStage(Ve()), e.registerPanel({
+		id: He,
 		title: "Tone Levels",
-		component: Ee,
+		component: De,
 		defaultDock: {
 			module: "develop",
 			direction: "right",
 			order: 6.5,
 			width: 268
 		},
-		onReset: Ue
+		onReset: We,
+		mask: {
+			component: De,
+			owns: F.map(L)
+		}
 	}), e.registerSlot({
-		id: Ve,
+		id: Ue,
 		slot: "develop-canvas-overlay",
-		component: Pe,
+		component: Fe,
 		order: 60
 	});
 }
-function Ge() {
-	let e = He;
+function Ke() {
+	let e = $;
 	if (e) {
-		He = null;
+		$ = null;
 		try {
-			H().getState().setPicking(null), e.unregisterProcessingStage(E), e.unregisterSlot(Ve);
+			U().getState().setPicking(null), e.unregisterProcessingStage(E), e.unregisterSlot(Ue);
 		} catch (e) {
 			console.warn("[tone-levels] deactivate failed:", e);
 		}
 	}
 }
 //#endregion
-export { We as activate, Ge as deactivate };
+export { Ge as activate, Ke as deactivate };
 
 //# sourceMappingURL=index.js.map
