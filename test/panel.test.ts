@@ -289,6 +289,13 @@ describe("LevelsPanel", () => {
     expect(store().getState().picking).toBeNull();
   });
 
+  it("disarms the picker when the panel closes", () => {
+    mount();
+    fireEvent.click(screen.getByLabelText("Pick grey point for all channels"));
+    cleanup();
+    expect(store().getState().picking).toBeNull();
+  });
+
   it("reports the armed picker to assistive tech", () => {
     mount();
     const grey = screen.getByLabelText("Pick grey point for all channels");
@@ -329,6 +336,13 @@ describe("LevelsPanel in a mask", () => {
     render(React.createElement(LevelsPanel));
     return mask;
   }
+
+  it("leaves the photo's armed picker alone when it closes", () => {
+    mountInMask();
+    store().getState().setPicking({ point: "white", scope: "all" });
+    cleanup();
+    expect(store().getState().picking).toEqual({ point: "white", scope: "all" });
+  });
 
   it("shows the mask's levels, not the photo's", () => {
     mountInMask({ [qualified("valueGamma")]: 2 }, { [qualified("valueGamma")]: 0.5 });

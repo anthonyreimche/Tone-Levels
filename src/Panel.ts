@@ -70,6 +70,7 @@ export function LevelsPanel() {
   const [draft, setDraft] = useState<{ label: string; value: number } | null>(null);
 
   useEffect(() => (inMask ? undefined : startLiveSampler()), [inMask]);
+  useEffect(() => (inMask ? undefined : () => store().getState().setPicking(null)), [inMask]);
 
   const p = readParams(scope.getParams());
   const ch = p.channels[channel];

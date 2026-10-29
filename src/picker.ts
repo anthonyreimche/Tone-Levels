@@ -2,10 +2,11 @@
 // Develop canvas takes one plain left click, maps it to image UV through the
 // overlay rect (interface-scale aware), captures the pre-Levels view, averages
 // the 5×5 patch around the pixel (the core white-balance eyedropper rule) in
-// the active TRC and applies GIMP's pick. Esc disarms; core's Ctrl/⌘/Space
-// passthrough keeps pan and zoom working. The overlay draws nothing, and the
-// pick stays armed, while the Crop tool, another core tool or a core picker
-// owns the canvas: the core enables its own pickers only when no tool is active.
+// the active TRC and applies GIMP's pick. Esc or closing the panel disarms;
+// core's Ctrl/⌘/Space passthrough keeps pan and zoom working. The overlay
+// draws nothing, and the pick stays armed, while the Crop tool, another core
+// tool or a core picker owns the canvas: the core enables its own pickers only
+// when no tool is active.
 
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { applyPick } from "./config";
