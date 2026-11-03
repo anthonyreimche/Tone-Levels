@@ -17,6 +17,7 @@ import { histogramsFromRgba } from "../src/histogram";
 import { DEFAULT_CHANNEL, DEFAULT_PARAMS } from "../src/model";
 import { LevelsPanel } from "../src/Panel";
 import { qualified, readParams } from "../src/params";
+import { syncPickDrag } from "../src/picker";
 import { initRuntime } from "../src/runtime";
 import type { DevelopParams } from "../src/safelight";
 import { initStore, store, type MeasureSignature } from "../src/store";
@@ -296,6 +297,16 @@ describe("LevelsPanel", () => {
     expect(store().getState().picking).toBeNull();
   });
 
+  it("disarms the picker when core lets go of its tool on Escape or to another", () => {
+    mount();
+    const stop = syncPickDrag();
+    fireEvent.click(screen.getByLabelText("Pick grey point for all channels"));
+    expect(rig.held()).not.toBeNull();
+    act(() => rig.dropPickDrag());
+    expect(store().getState().picking).toBeNull();
+    stop();
+  });
+
   it("reports the armed picker to assistive tech", () => {
     mount();
     const grey = screen.getByLabelText("Pick grey point for all channels");
@@ -341,6 +352,16 @@ describe("LevelsPanel in a mask", () => {
     mountInMask();
     store().getState().setPicking({ point: "white", scope: "all" });
     cleanup();
+    expect(store().getState().picking).toEqual({ point: "white", scope: "all" });
+  });
+
+  it("leaves the photo's armed picker alone when it opens", () => {
+    rig = fakeApi();
+    rig.inMask();
+    initRuntime(rig.api);
+    initStore();
+    store().getState().setPicking({ point: "white", scope: "all" });
+    render(React.createElement(LevelsPanel));
     expect(store().getState().picking).toEqual({ point: "white", scope: "all" });
   });
 

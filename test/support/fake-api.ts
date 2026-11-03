@@ -1,7 +1,7 @@
 // A stand-in Safelight API over real React and zustand: the develop store
 // holds a param bag and records commits, registrations and captures are
-// recorded, and the ui kit is plain DOM so Testing Library can find controls
-// by their labels.
+// recorded, the pick-drag tool is held as core holds it, and the ui kit is
+// plain DOM so Testing Library can find controls by their labels.
 
 import * as React from "react";
 import { create } from "zustand";
@@ -9,16 +9,18 @@ import type {
   ButtonProps,
   DevelopParams,
   DevelopStoreState,
+  FloatCaptureOptions,
+  FloatFrame,
   NumberInputProps,
   PanelContribution,
   ParamScope,
+  PickDragTool,
   ProcessingStageContribution,
   RowProps,
   SafelightAPI,
   SectionProps,
   SegmentedControlProps,
   SelectProps,
-  SlotContribution,
   StackProps,
   StateCreator,
   StoreApi,
@@ -98,28 +100,38 @@ export interface Rig {
   commits: string[];
   /** The paramBag option of each captureFrame call. */
   captures: Record<string, unknown>[];
+  /** The options of each captureFloatFrame call. */
+  floatCaptures: FloatCaptureOptions[];
   /** The photo id and paramBag argument of each renderPhotoFrame call. */
   measures: { photoId: string; paramBag: Record<string, unknown> }[];
   stages: ProcessingStageContribution[];
   panels: PanelContribution[];
-  slots: SlotContribution[];
   unregisteredStages: string[];
-  unregisteredSlots: string[];
+  /** The pick-drag tool this extension holds. */
+  held(): PickDragTool | null;
+  /** Core letting go of the tool: Escape, or another extension taking it. */
+  dropPickDrag(): void;
   /** Puts what renders from here on inside a mask holding `bag`, as the core's
    *  Masking panel does; returns the mask's store. */
   inMask(bag?: Record<string, unknown>): StoreApi<{ bag: Record<string, unknown> }>;
 }
 
-/** `bitmap` answers captureFrame and renderPhotoFrame; without it they never settle. */
-export function fakeApi(bag: Record<string, unknown> = {}, bitmap?: () => Promise<ImageBitmap>): Rig {
+/** `bitmap` answers captureFrame and renderPhotoFrame; without it they never
+ *  settle. `float` answers captureFloatFrame; without it the host has none, as
+ *  a build before 3.1.0. */
+export function fakeApi(
+  bag: Record<string, unknown> = {},
+  bitmap?: () => Promise<ImageBitmap>,
+  float?: () => Promise<FloatFrame | null>,
+): Rig {
   const commits: string[] = [];
   const captures: Record<string, unknown>[] = [];
+  const floatCaptures: FloatCaptureOptions[] = [];
   const measures: { photoId: string; paramBag: Record<string, unknown> }[] = [];
   const stages: ProcessingStageContribution[] = [];
   const panels: PanelContribution[] = [];
-  const slots: SlotContribution[] = [];
   const unregisteredStages: string[] = [];
-  const unregisteredSlots: string[] = [];
+  const pick = create<{ tool: PickDragTool | null }>()(() => ({ tool: null }));
   let mask: StoreApi<{ bag: Record<string, unknown> }> | null = null;
   const develop: StoreApi<DevelopStoreState> = create<DevelopStoreState>()((set) => ({
     photoId: "p1",
@@ -127,10 +139,6 @@ export function fakeApi(bag: Record<string, unknown> = {}, bitmap?: () => Promis
     previewParams: null,
     paramBag: bag,
     histogram: null,
-    cropping: false,
-    activeTool: "none",
-    wbPicking: false,
-    hslPicking: false,
     setDynParams: (patch) => set((s) => ({ paramBag: { ...s.paramBag, ...patch } })),
     commitEdit: async (label) => {
       commits.push(label);
@@ -157,20 +165,24 @@ export function fakeApi(bag: Record<string, unknown> = {}, bitmap?: () => Promis
     registerProcessingStage: (c) => void stages.push(c),
     unregisterProcessingStage: (id) => void unregisteredStages.push(id),
     registerPanel: (c) => void panels.push(c),
-    registerSlot: (c) => void slots.push(c),
-    unregisterSlot: (id) => void unregisteredSlots.push(id),
     ui,
     stores: {
       create: <T,>(init: StateCreator<T>) => create<T>()(init),
       useDevelopStore: develop,
     },
-    cursors: { resolve: (token) => token },
     develop: {
-      useDevelopOverlay: () => ({ rect: null, nonce: 0 }),
       captureFrame: (_params, options) => {
         captures.push(options?.paramBag ?? {});
         return bitmap ? bitmap() : new Promise<ImageBitmap>(() => undefined);
       },
+      ...(float
+        ? {
+            captureFloatFrame: (_params: DevelopParams, options?: FloatCaptureOptions) => {
+              floatCaptures.push(options ?? {});
+              return float();
+            },
+          }
+        : {}),
       renderPhotoFrame: (photoId, _params, paramBag) => {
         measures.push({ photoId, paramBag: paramBag ?? {} });
         return bitmap ? bitmap() : new Promise<ImageBitmap | null>(() => undefined);
@@ -185,11 +197,26 @@ export function fakeApi(bag: Record<string, unknown> = {}, bitmap?: () => Promis
         develop((s) => s.paramBag);
         return photoScope;
       },
+      setPickDrag: (tool) => pick.setState({ tool }),
+      usePickDragHeld: () => pick((s) => s.tool !== null),
     },
   };
   const inMask = (bag: Record<string, unknown> = {}) => {
     mask = create<{ bag: Record<string, unknown> }>()(() => ({ bag }));
     return mask;
   };
-  return { api, develop, commits, captures, measures, stages, panels, slots, unregisteredStages, unregisteredSlots, inMask };
+  return {
+    api,
+    develop,
+    commits,
+    captures,
+    floatCaptures,
+    measures,
+    stages,
+    panels,
+    unregisteredStages,
+    held: () => pick.getState().tool,
+    dropPickDrag: () => pick.setState({ tool: null }),
+    inMask,
+  };
 }

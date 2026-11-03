@@ -2,8 +2,8 @@
 // GIMP draws the histogram of its own input, so every frame is rendered with
 // this stage's keys at their defaults (the stage then skips its block). The
 // histogram and Auto measure the whole photo (renderPhotoFrame, off-screen);
-// the pickers read the view (captureFrame), because they sample what is under
-// the cursor. Stages after Levels still run in both: the frame includes
+// the pickers read the view (captureFrame, and captureFloatFrame where the
+// host has it), because they sample what is under the cursor. Stages after Levels still run in both: the frame includes
 // effects-phase Vignette and Grain. The sampler takes one capture per settled
 // render (the core histogram's identity changing), throttled, one in flight
 // and at most one queued, and only while the panel is mounted. A render that
@@ -14,7 +14,7 @@
 
 import { STAGE_ID, resetPatch } from "./params";
 import { api } from "./runtime";
-import type { DevelopParams, DevelopStoreState, StoreApi } from "./safelight";
+import type { DevelopParams, DevelopStoreState, FloatFrame, StageSpace, StoreApi } from "./safelight";
 import { store, type MeasureSignature, type MeasuredFrame, type Readback } from "./store";
 
 /** The long edge of renderPhotoFrame's output. Its frames are read back at
@@ -52,6 +52,29 @@ export function capturePreLevels(params?: DevelopParams): Promise<ImageBitmap> {
   const a = api();
   const dev = a.stores.useDevelopStore.getState();
   return a.develop.captureFrame(params ?? dev.previewParams ?? dev.params, { paramBag: resetPatch() });
+}
+
+const PERCEPTUAL: StageSpace = { encoding: "perceptual", primaries: "rec709" };
+const LINEAR: StageSpace = { encoding: "linear", primaries: "rec709" };
+
+/** capturePreLevels as floats in the active TRC's encoding: the colour every
+ *  stage has finished with, signed and past 1 on the current processing. Null
+ *  where the host has no float capture, the GPU no float targets, or the
+ *  capture fails. */
+export async function capturePreLevelsFloat(linear: boolean): Promise<FloatFrame | null> {
+  const a = api();
+  if (!a.develop.captureFloatFrame) return null;
+  const dev = a.stores.useDevelopStore.getState();
+  try {
+    return await a.develop.captureFloatFrame(dev.previewParams ?? dev.params, {
+      point: "pre-output",
+      space: linear ? LINEAR : PERCEPTUAL,
+      paramBag: resetPatch(),
+    });
+  } catch (err) {
+    console.warn("[tone-levels] float capture failed:", err);
+    return null;
+  }
 }
 
 /** The whole open photo, off-screen and small, for measuring; null without a

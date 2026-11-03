@@ -2,22 +2,23 @@
 //
 // A port of GIMP's Levels tool: per-channel input and output levels over the
 // image's histogram, Auto Input Levels and the black, grey and white
-// eyedroppers. Registers the display-adjust stage (stage.ts), the Develop
-// panel (Panel.ts) and the eyedropper overlay (picker.ts).
+// eyedroppers. Registers the display-adjust stage (stage.ts) and the Develop
+// panel (Panel.ts); an armed eyedropper holds the canvas's pick-drag tool
+// (picker.ts).
 
 import { LevelsPanel } from "./Panel";
 import { EXT_ID, STAGE_ID, UNIFORM_KEYS, qualified, resetPatch } from "./params";
-import { PickerOverlay } from "./picker";
+import { syncPickDrag } from "./picker";
 import { api, initRuntime } from "./runtime";
 import type { SafelightAPI } from "./safelight";
 import { levelsStage } from "./stage";
 import { initStore, store } from "./store";
 
 const PANEL_ID = `${EXT_ID}.panel`;
-const PICKER_ID = `${EXT_ID}.picker`;
 
 // Named apart from activate()'s `host` parameter; null until activate() runs.
 let activeHost: SafelightAPI | null = null;
+let stopPickSync: (() => void) | null = null;
 
 function reset(): void {
   const dev = api().stores.useDevelopStore.getState();
@@ -40,7 +41,7 @@ export function activate(host: SafelightAPI): void {
     // The same panel edits a mask's levels in the Masking panel's Adjust tab.
     mask: { component: LevelsPanel, owns: UNIFORM_KEYS.map(qualified) },
   });
-  host.registerSlot({ id: PICKER_ID, slot: "develop-canvas-overlay", component: PickerOverlay, order: 60 });
+  stopPickSync = syncPickDrag();
 }
 
 export function deactivate(): void {
@@ -53,8 +54,9 @@ export function deactivate(): void {
   // throw here would skip that sweep, so a failure is logged instead.
   try {
     store().getState().setPicking(null);
+    stopPickSync?.();
+    stopPickSync = null;
     host.unregisterProcessingStage(STAGE_ID);
-    host.unregisterSlot(PICKER_ID);
   } catch (err) {
     console.warn("[tone-levels] deactivate failed:", err);
   }

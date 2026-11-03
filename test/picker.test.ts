@@ -1,14 +1,16 @@
-// The eyedropper's testable parts: a click mapped to image UV through the
-// overlay rect under interface scaling, the 5×5 patch averaged in the active
-// TRC, and a pick written to the bag as one commit that disarms the picker.
+// The eyedroppers: an armed picker holds the canvas's pick-drag tool, a press
+// in the canvas's pixels mapped to frame UV, the 5×5 patch of the pre-Levels
+// float frame (8-bit where the host has none) averaged in the active TRC, and
+// a pick written to the bag as one commit that disarms the picker.
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_CHANNEL, decodePerceptual } from "../src/model";
-import { readParams } from "../src/params";
-import { commitPick, patchColor, pickStillWanted, pointToUv } from "../src/picker";
+import { qualified, readParams, resetPatch } from "../src/params";
+import { commitPick, patchColor, pickStillWanted, pointToUv, syncPickDrag } from "../src/picker";
 import { initRuntime } from "../src/runtime";
+import type { FloatFrame } from "../src/safelight";
 import { initStore, store, type PickTarget } from "../src/store";
-import { fakeApi, type Rig } from "./support/fake-api";
+import { fakeApi, fakeBitmap, type Rig } from "./support/fake-api";
 
 function frame(w: number, h: number, at: (x: number, y: number) => [number, number, number]): Uint8ClampedArray {
   const data = new Uint8ClampedArray(w * h * 4);
@@ -18,20 +20,25 @@ function frame(w: number, h: number, at: (x: number, y: number) => [number, numb
   return data;
 }
 
+function floatFrame(w: number, h: number, at: (x: number, y: number) => [number, number, number]): FloatFrame {
+  const data = new Float32Array(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) data.set([...at(x, y), 1], (y * w + x) * 4);
+  }
+  return { data, width: w, height: h, space: { encoding: "perceptual", primaries: "rec709" }, point: "pre-output" };
+}
+
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 describe("pointToUv", () => {
-  const rect = { x: 100, y: 50, w: 400, h: 200 };
-
-  it("maps a client point inside the displayed image to 0..1", () => {
-    expect(pointToUv(300, 150, { left: 0, top: 0, width: 800, height: 600 }, 800, rect)).toEqual({ x: 0.5, y: 0.5 });
+  it("maps a point in the canvas's pixels to 0..1 of its frame", () => {
+    expect(pointToUv({ x: 20, y: 5 }, 40, 20)).toEqual({ x: 0.5, y: 0.25 });
   });
 
-  it("divides by the interface scale so a zoomed UI still lands on the pixel", () => {
-    expect(pointToUv(375, 187.5, { left: 0, top: 0, width: 1000, height: 750 }, 800, rect)).toEqual({ x: 0.5, y: 0.5 });
-  });
-
-  it("returns null outside the image", () => {
-    expect(pointToUv(10, 10, { left: 0, top: 0, width: 800, height: 600 }, 800, rect)).toBeNull();
-    expect(pointToUv(300, 150, { left: 0, top: 0, width: 800, height: 600 }, 800, null)).toBeNull();
+  it("returns null off the frame and for the host's blank 1×1 frame", () => {
+    expect(pointToUv({ x: 41, y: 5 }, 40, 20)).toBeNull();
+    expect(pointToUv({ x: -1, y: 5 }, 40, 20)).toBeNull();
+    expect(pointToUv({ x: 0, y: 0 }, 1, 1)).toBeNull();
   });
 });
 
@@ -119,5 +126,113 @@ describe("pickStillWanted", () => {
     store().getState().setPicking(target);
     rig.develop.setState({ photoId: "p2" });
     expect(pickStillWanted(target, "p1")).toBe(false);
+  });
+});
+
+describe("the pick-drag tool", () => {
+  let rig: Rig;
+  let stop: () => void;
+  const WHITE: PickTarget = { point: "white", scope: "all" };
+
+  /** A 40×20 canvas whose pre-Levels float frame is 20×10: dark on the left
+   *  half, a colour on the right half. */
+  function arm(bag: Record<string, unknown> = {}, float?: () => Promise<FloatFrame | null>) {
+    rig = fakeApi(bag, async () => fakeBitmap(40, 20), float);
+    initRuntime(rig.api);
+    initStore();
+    stop = syncPickDrag();
+    store().getState().setPicking(WHITE);
+  }
+  const halves = (right: [number, number, number]) => async () =>
+    floatFrame(20, 10, (x) => (x < 10 ? [0.05, 0.05, 0.05] : right));
+  const highInputs = () => {
+    const p = readParams(rig.develop.getState().paramBag);
+    return [p.channels.red.highInput, p.channels.green.highInput, p.channels.blue.highInput];
+  };
+
+  afterEach(() => {
+    stop();
+    vi.unstubAllGlobals();
+  });
+
+  it("is held while a picker is armed and let go when it disarms", () => {
+    arm();
+    expect(rig.held()?.onPress).toBeTypeOf("function");
+    store().getState().setPicking(null);
+    expect(rig.held()).toBeNull();
+  });
+
+  it("picks from the pre-Levels float frame at the pressed canvas pixel", async () => {
+    arm({}, halves([0.7337, 0.6113, 0.5249]));
+    rig.held()?.onPress?.({ x: 30, y: 10 });
+    await settle();
+    const [r, g, b] = highInputs();
+    expect(r).toBeCloseTo(0.7337, 6);
+    expect(g).toBeCloseTo(0.6113, 6);
+    expect(b).toBeCloseTo(0.5249, 6);
+    expect(rig.floatCaptures).toEqual([
+      { point: "pre-output", space: { encoding: "perceptual", primaries: "rec709" }, paramBag: resetPatch() },
+    ]);
+    expect(rig.commits).toEqual(["Tone Levels pick white point"]);
+    expect(store().getState().picking).toBeNull();
+    expect(rig.held()).toBeNull();
+  });
+
+  it("reads linear floats in Linear mode, as they are", async () => {
+    arm({ [qualified("linear")]: 1 }, halves([0.5, 0.4, 0.3]));
+    rig.held()?.onPress?.({ x: 30, y: 10 });
+    await settle();
+    expect(rig.floatCaptures[0].space).toEqual({ encoding: "linear", primaries: "rec709" });
+    expect(highInputs()[0]).toBeCloseTo(0.5, 6);
+  });
+
+  /** jsdom has no OffscreenCanvas: one that reads back `value` in every channel. */
+  function stubReadback(value: number) {
+    vi.stubGlobal(
+      "OffscreenCanvas",
+      class {
+        getContext() {
+          return {
+            drawImage: () => undefined,
+            getImageData: (_x: number, _y: number, w: number, h: number) => ({
+              data: new Uint8ClampedArray(w * h * 4).fill(value),
+            }),
+          };
+        }
+      },
+    );
+  }
+
+  it("falls back to the 8-bit frame on a host without float capture", async () => {
+    stubReadback(128);
+    arm();
+    rig.held()?.onPress?.({ x: 30, y: 10 });
+    await settle();
+    expect(highInputs()[0]).toBeCloseTo(128 / 255, 12);
+    expect(rig.commits).toEqual(["Tone Levels pick white point"]);
+  });
+
+  it("falls back to the 8-bit frame when the GPU has no float targets", async () => {
+    stubReadback(64);
+    arm({}, async () => null);
+    rig.held()?.onPress?.({ x: 30, y: 10 });
+    await settle();
+    expect(highInputs()[0]).toBeCloseTo(64 / 255, 12);
+  });
+
+  it("ignores a press off the frame and stays armed", async () => {
+    arm({}, halves([0.7, 0.7, 0.7]));
+    rig.held()?.onPress?.({ x: 45, y: 10 });
+    await settle();
+    expect(rig.commits).toEqual([]);
+    expect(store().getState().picking).toBe(WHITE);
+  });
+
+  it("drops a press whose capture lands after the picker disarmed", async () => {
+    arm({}, halves([0.7, 0.7, 0.7]));
+    rig.held()?.onPress?.({ x: 30, y: 10 });
+    store().getState().setPicking(null);
+    await settle();
+    expect(rig.commits).toEqual([]);
   });
 });

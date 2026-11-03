@@ -31,28 +31,24 @@ export interface DevelopStoreState {
   /** Recomputed by core after every settled render; its identity changing is
    *  the "frame changed" signal. */
   histogram: object | null;
-  /** The Crop tool is open; the view then draws a widened crop. */
-  cropping: boolean;
-  /** The core canvas tool in use (ToolMode); "none" when no tool owns the canvas. */
-  activeTool: "none" | "mask" | "retouch" | "hsl-picker";
-  /** The white-balance eyedropper is armed: its next click takes the canvas. */
-  wbPicking: boolean;
-  /** The HSL colour picker is armed: its click and drag take the canvas. */
-  hslPicking: boolean;
   setDynParams(patch: Record<string, unknown>): void;
   commitEdit(label: string): Promise<void>;
 }
 
-export interface OverlayRect {
+/** A point on the canvas, in its pixels, from its top-left corner. */
+export interface CanvasPoint {
   x: number;
   y: number;
-  w: number;
-  h: number;
 }
 
-export interface DevelopOverlayState {
-  rect: OverlayRect | null;
-  nonce: number;
+/** The canvas's pick-drag tool (Safelight 3.2.0). Every handler is optional. */
+export interface PickDragTool {
+  /** A press on the image, as it happens. */
+  onPress?(point: CanvasPoint): void;
+  /** The press with the colour the view shows there, sRGB 0-1. */
+  onDown?(rgb: readonly [number, number, number], point: CanvasPoint): void;
+  onMove?(point: CanvasPoint): void;
+  onUp?(): void;
 }
 
 export type GlslType = "float" | "int" | "bool" | "vec2" | "vec3" | "vec4" | "sampler2D";
@@ -125,17 +121,29 @@ export interface ParamScope {
   commit(label: string): void;
 }
 
-export interface SlotContribution {
-  id: string;
-  slot: "develop-canvas-overlay" | "develop-toolbar" | "library-toolbar" | "library-subbar";
-  component: ComponentType;
-  order?: number;
-}
-
 export interface CaptureOptions {
   asShown?: boolean;
   /** Merged over the photo's extension-stage params for this capture only. */
   paramBag?: Record<string, unknown>;
+}
+
+/** RGBA floats, rows top-down, in `space`. Alpha is 1. */
+export interface FloatFrame {
+  data: Float32Array;
+  width: number;
+  height: number;
+  space: StageSpace;
+  point: "pre-output" | "output" | "scene";
+}
+
+export interface FloatCaptureOptions {
+  /** Default linear Rec.709. */
+  space?: StageSpace;
+  /** "pre-output" (the default) is signed, past 1 on the current processing. */
+  point?: FloatFrame["point"];
+  paramBag?: Record<string, unknown>;
+  /** The frame's long edge in pixels; 1280 by default. */
+  maxEdge?: number;
 }
 
 export interface ButtonProps {
@@ -240,23 +248,26 @@ export interface SafelightAPI {
   registerProcessingStage(c: ProcessingStageContribution): void;
   unregisterProcessingStage(id: string): void;
   registerPanel(c: PanelContribution): void;
-  registerSlot(c: SlotContribution): void;
-  unregisterSlot(id: string): void;
   ui: UiKit;
   stores: {
     create<T>(init: StateCreator<T>): StoreApi<T>;
     useDevelopStore: StoreApi<DevelopStoreState>;
   };
-  cursors: {
-    resolve(token: string): string;
-  };
   develop: {
-    useDevelopOverlay(): DevelopOverlayState;
+    /** Aligned 1:1 with the canvas: its size is the canvas's in pixels. */
     captureFrame(params: DevelopParams, options?: CaptureOptions): Promise<ImageBitmap>;
+    /** captureFrame's view as floats (Safelight 3.1.0); null without float
+     *  render targets. */
+    captureFloatFrame?(params: DevelopParams, options?: FloatCaptureOptions): Promise<FloatFrame | null>;
     /** The whole photo, off-screen, small; for measuring. `paramBag` replaces the photo's bag. */
     renderPhotoFrame(photoId: string, params: DevelopParams, paramBag?: Record<string, unknown>): Promise<ImageBitmap | null>;
     /** The mask's scope inside a mask's Adjust tab, the photo's anywhere else. */
     useParamScope(): ParamScope;
+    /** Hold the canvas's pick-drag tool, or with null let go of this
+     *  extension's. Core lets go on Escape or when another extension takes it. */
+    setPickDrag(tool: PickDragTool | null): void;
+    /** React hook: whether this extension holds the pick-drag tool. */
+    usePickDragHeld(): boolean;
   };
 }
 

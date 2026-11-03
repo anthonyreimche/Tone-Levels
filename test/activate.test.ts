@@ -12,7 +12,7 @@ import { fakeApi } from "./support/fake-api";
 describe("activate", () => {
   afterEach(() => deactivate());
 
-  it("registers the stage, the panel and the eyedropper overlay", () => {
+  it("registers the stage and the panel", () => {
     const rig = fakeApi();
     activate(rig.api);
     expect(rig.stages.map((s) => s.id)).toEqual([STAGE_ID]);
@@ -22,7 +22,14 @@ describe("activate", () => {
       title: "Tone Levels",
       defaultDock: { module: "develop", direction: "right" },
     });
-    expect(rig.slots).toMatchObject([{ id: "tone-levels.picker", slot: "develop-canvas-overlay" }]);
+  });
+
+  it("hands the canvas the pick-drag tool while a picker is armed", () => {
+    const rig = fakeApi();
+    activate(rig.api);
+    expect(rig.held()).toBeNull();
+    store().getState().setPicking({ point: "grey", scope: "all" });
+    expect(rig.held()).not.toBeNull();
   });
 
   it("offers the panel in masks, owning every key it writes", () => {
@@ -46,14 +53,14 @@ describe("activate", () => {
     expect(rig.commits).toEqual(["Tone Levels reset"]);
   });
 
-  it("disarms the picker and drops the stage and the overlay on deactivate", () => {
+  it("disarms the picker, lets go of its tool and drops the stage on deactivate", () => {
     const rig = fakeApi();
     activate(rig.api);
     store().getState().setPicking({ point: "black", scope: "all" });
     deactivate();
     expect(store().getState().picking).toBeNull();
+    expect(rig.held()).toBeNull();
     expect(rig.unregisteredStages).toEqual([STAGE_ID]);
-    expect(rig.unregisteredSlots).toEqual(["tone-levels.picker"]);
   });
 });
 
@@ -70,7 +77,7 @@ describe("deactivate", () => {
 
   it("warns, rather than throws, when a teardown call fails", () => {
     const rig = fakeApi();
-    rig.api.unregisterSlot = () => {
+    rig.api.unregisterProcessingStage = () => {
       throw new Error("host gone");
     };
     activate(rig.api);

@@ -62,7 +62,7 @@ npm run test:reference # regenerate test/reference/vectors.json (needs gcc)
 npm run build          # dist/index.js, the file Safelight loads
 ```
 
-## License
+## Licence
 
 GPL-3.0-or-later. The maths is ported from GIMP, Copyright (C) 1995 Spencer
 Kimball and Peter Mattis and the GIMP authors (levels: Copyright (C) 2007

@@ -66,11 +66,16 @@ export function LevelsPanel() {
   const channel = store()((s) => s.channel);
   const scale = store()((s) => s.scale);
   const picking = store()((s) => s.picking);
+  const holdsPickDrag = api().develop.usePickDragHeld();
   const typed = useRef<TypedEdit | null>(null);
   const [draft, setDraft] = useState<{ label: string; value: number } | null>(null);
 
   useEffect(() => (inMask ? undefined : startLiveSampler()), [inMask]);
   useEffect(() => (inMask ? undefined : () => store().getState().setPicking(null)), [inMask]);
+  // Core lets go of the tool on Escape or when another extension takes it.
+  useEffect(() => {
+    if (!inMask && !holdsPickDrag) store().getState().setPicking(null);
+  }, [inMask, holdsPickDrag]);
 
   const p = readParams(scope.getParams());
   const ch = p.channels[channel];
