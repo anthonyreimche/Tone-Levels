@@ -6,6 +6,7 @@
 //    GLSL ES 3.00 driver, with the host's uniform/helper namespacing applied;
 //  • at the defaults the stage is a bit-exact no-op, on both process versions;
 //  • the rendered pixels equal the model's levelsPixel for GIMP's edits;
+//  • a white point above 1 applies on version 2 and leaves version 1 as it was;
 //  • a mask's copy of the stage applies the mask's levels inside the mask
 //    only, leaving every pixel outside it as the photo's own levels left it.
 //
@@ -188,6 +189,26 @@ describe("Tone Levels stage on the real renderer", () => {
         expect(s.rmse).toBeLessThan(MAX_RMS_ERROR);
       }
     });
+  });
+
+  it("takes a white point above 1 on version 2, and reads it as 1 on version 1", () => {
+    const params = edit({ value: { highInput: 1.6 } });
+    const levels = () => [...builtinStages(), levelsStage()];
+    const v1Idle = frameOf(levels(), 1, bagPatch(DEFAULT_PARAMS));
+    const v1Over = frameOf(levels(), 1, bagPatch(params));
+    expect(v1Idle).not.toBeNull();
+    expect(v1Over).not.toBeNull();
+    for (let i = 0; i < v1Over!.data.length; i++) expect(v1Over!.data[i]).toBe(v1Idle!.data[i]);
+
+    const v2Idle = frameOf(levels(), 2, bagPatch(DEFAULT_PARAMS));
+    const v2Over = frameOf(levels(), 2, bagPatch(params));
+    expect(v2Idle).not.toBeNull();
+    expect(v2Over).not.toBeNull();
+    const s = compare(v2Over!, v2Idle!, params);
+    console.log(`[tl-gpu] v2 white 1.6: error rms ${s.rmse.toExponential(2)}, max ${s.max.toExponential(2)} at ${s.worst}`);
+    expect(s.changeRms).toBeGreaterThan(1e-3);
+    expect(s.max).toBeLessThan(MAX_ABS_ERROR);
+    expect(s.rmse).toBeLessThan(MAX_RMS_ERROR);
   });
 
   it("applies a mask's levels inside the mask, and the photo's everywhere else", () => {

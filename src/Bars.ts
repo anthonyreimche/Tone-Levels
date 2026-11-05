@@ -1,12 +1,13 @@
-// The Levels dialog's drawn parts: the histogram, the input and output bars
+// The Levels dialogue's drawn parts: the histogram, the input and output bars
 // and the handle bars under them, as plain DOM and SVG so theme colours apply
 // through CSS variables (in `style`: presentation attributes don't resolve
 // them). The geometry and the handle rules live in histogram.ts and handles.ts.
 
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { barPosition, pickHandle } from "./handles";
+import { barPosition, fromBar, pickHandle, toBar } from "./handles";
 import { BINS, histogramPath, spikeHeights, type HistogramScale } from "./histogram";
 import { clamp, mapInput, type Channel, type LevelsParams } from "./model";
+import { UNIT, type Range } from "./params";
 import { api, h } from "./runtime";
 
 /** GIMP's channel colours (gimp_color_bar_set_channel). */
@@ -21,15 +22,16 @@ const byte = (v: number) => Math.floor(clamp(v, 0, 1) * 255.999);
 
 /** levels_update_input_bar: map_input across the bar, grey for Value and all
  *  three channels' maps for a colour channel. */
-export function inputBarGradient(p: LevelsParams, channel: Channel, stops = 33): string {
+export function inputBarGradient(p: LevelsParams, channel: Channel, axis: Range = UNIT, stops = 33): string {
   const parts: string[] = [];
   for (let i = 0; i < stops; i++) {
-    const x = i / (stops - 1);
+    const t = i / (stops - 1);
+    const x = fromBar(axis, t);
     const [r, g, b] =
       channel === "value"
         ? [0, 0, 0].map(() => mapInput(p.channels.value, x))
         : [mapInput(p.channels.red, x), mapInput(p.channels.green, x), mapInput(p.channels.blue, x)];
-    parts.push(`rgb(${byte(r)}, ${byte(g)}, ${byte(b)}) ${(x * 100).toFixed(2)}%`);
+    parts.push(`rgb(${byte(r)}, ${byte(g)}, ${byte(b)}) ${(t * 100).toFixed(2)}%`);
   }
   return `linear-gradient(to right, ${parts.join(", ")})`;
 }
@@ -40,7 +42,15 @@ export function outputBarGradient(channel: Channel): string {
 
 const PLOT_HEIGHT = 64;
 
-export function HistogramView({ bins, scale, channel }: { bins: ArrayLike<number> | null; scale: HistogramScale; channel: Channel }) {
+interface HistogramViewProps {
+  bins: ArrayLike<number> | null;
+  scale: HistogramScale;
+  channel: Channel;
+  /** The input bar's axis: the bins fill its 0..1 stretch. */
+  axis?: Range;
+}
+
+export function HistogramView({ bins, scale, channel, axis = UNIT }: HistogramViewProps) {
   const { useMemo } = api().react;
   const { tokens } = api().ui;
   const fill = channel === "value" ? tokens.textSecondary : CHANNEL_COLOR[channel];
@@ -50,7 +60,7 @@ export function HistogramView({ bins, scale, channel }: { bins: ArrayLike<number
     {
       role: "img",
       "aria-label": "Histogram",
-      viewBox: `0 0 ${BINS} ${PLOT_HEIGHT}`,
+      viewBox: `${axis.min * BINS} 0 ${(axis.max - axis.min) * BINS} ${PLOT_HEIGHT}`,
       preserveAspectRatio: "none",
       style: {
         display: "block",
@@ -71,7 +81,9 @@ export function GradientBar({ background, label }: { background: string; label: 
 
 export interface HandleBarProps {
   label: string;
+  /** Handle values, placed along `axis`. */
   positions: readonly (number | null)[];
+  axis?: Range;
   onDrag(index: number, pos: number): void;
   onRelease(): void;
 }
@@ -79,13 +91,14 @@ export interface HandleBarProps {
 const HANDLE_FILL = ["#000000", "#808080", "#ffffff"];
 
 /** GIMP's handle bar: a press takes the nearest handle and moves it to the
- *  pointer, the drag follows, release ends the gesture. Handles at 0 and 1
+ *  pointer, the drag follows, release ends the gesture. Handles at the ends
  *  overhang the bar by half their width, so its parent leaves a 5 px gutter. */
-export function HandleBar({ label, positions, onDrag, onRelease }: HandleBarProps) {
+export function HandleBar({ label, positions, axis = UNIT, onDrag, onRelease }: HandleBarProps) {
   const { useRef } = api().react;
   const { tokens } = api().ui;
   const active = useRef<number | null>(null);
-  const at = (e: ReactPointerEvent<HTMLDivElement>) => barPosition(e.clientX, e.currentTarget.getBoundingClientRect());
+  const at = (e: ReactPointerEvent<HTMLDivElement>) =>
+    fromBar(axis, barPosition(e.clientX, e.currentTarget.getBoundingClientRect()));
   const finish = () => {
     if (active.current === null) return;
     active.current = null;
@@ -129,7 +142,14 @@ export function HandleBar({ label, positions, onDrag, onRelease }: HandleBarProp
               width: 10,
               height: 9,
               viewBox: "0 0 10 9",
-              style: { position: "absolute", top: 0, left: `${pos * 100}%`, marginLeft: -5, overflow: "visible", pointerEvents: "none" },
+              style: {
+                position: "absolute",
+                top: 0,
+                left: `${toBar(axis, pos) * 100}%`,
+                marginLeft: -5,
+                overflow: "visible",
+                pointerEvents: "none",
+              },
             },
             h("path", { d: "M5 0.5L9.5 8.5H0.5Z", style: { fill: HANDLE_FILL[i], stroke: tokens.textSecondary, strokeWidth: 1 } }),
           ),

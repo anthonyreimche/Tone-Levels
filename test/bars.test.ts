@@ -5,18 +5,28 @@
 import { describe, expect, it } from "vitest";
 import { inputBarGradient, outputBarGradient } from "../src/Bars";
 import { DEFAULT_CHANNEL, DEFAULT_PARAMS, withChannel } from "../src/model";
+import { UNIT } from "../src/params";
 
 describe("inputBarGradient", () => {
   it("previews map_input in grey for Value", () => {
-    expect(inputBarGradient(DEFAULT_PARAMS, "value", 3)).toBe(
+    expect(inputBarGradient(DEFAULT_PARAMS, "value", UNIT, 3)).toBe(
       "linear-gradient(to right, rgb(0, 0, 0) 0.00%, rgb(127, 127, 127) 50.00%, rgb(255, 255, 255) 100.00%)",
     );
   });
 
   it("shows all three channels' input maps for a colour channel", () => {
     const p = withChannel(DEFAULT_PARAMS, "red", { ...DEFAULT_CHANNEL, lowInput: 0.5 });
-    expect(inputBarGradient(p, "green", 3)).toBe(
+    expect(inputBarGradient(p, "green", UNIT, 3)).toBe(
       "linear-gradient(to right, rgb(0, 0, 0) 0.00%, rgb(0, 127, 127) 50.00%, rgb(255, 255, 255) 100.00%)",
+    );
+  });
+});
+
+describe("inputBarGradient over a wider axis", () => {
+  it("spans the axis, so a white point past 1 reaches white at its own position", () => {
+    const p = withChannel(DEFAULT_PARAMS, "value", { ...DEFAULT_CHANNEL, highInput: 2 });
+    expect(inputBarGradient(p, "value", { min: 0, max: 2 }, 3)).toBe(
+      "linear-gradient(to right, rgb(0, 0, 0) 0.00%, rgb(127, 127, 127) 50.00%, rgb(255, 255, 255) 100.00%)",
     );
   });
 });

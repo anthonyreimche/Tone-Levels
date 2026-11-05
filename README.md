@@ -48,6 +48,11 @@ applies when you press Enter or leave the field.
   with Levels switched off, so tools that run after Levels (Vignette, Grain)
   are in it and values above white land in the top bin. A panel bypassed with
   its preview eye, or the crop tool's widened view, is not reflected.
+- On photos with the current processing, the black and white input points
+  may sit below 0 or above 255, so an eyedropper on a highlight brighter than
+  white keeps its value and maps it to white. Type such a value into the
+  field or pick it; the input bar and histogram then widen to show it. Photos
+  edited in an earlier Safelight keep GIMP's 0–255 range.
 - No Alpha channel, no "Edit these Settings as Curves", no GIMP levels files:
   Safelight presets carry Tone Levels' settings.
 

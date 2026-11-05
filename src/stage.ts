@@ -4,7 +4,7 @@
 // input and Clamp output their meaning. The block runs only while some key
 // differs from its default, so an untouched photo renders bit-exact.
 
-import { KEY_SPECS, STAGE_ID } from "./params";
+import { KEY_SPECS, STAGE_ID, keyRange } from "./params";
 import type { ProcessingStageContribution, UniformDeclaration } from "./safelight";
 
 /** A GLSL float literal at full single precision, always with a decimal
@@ -37,27 +37,37 @@ vec3 tlEncode(vec3 x) {
 }
 `;
 
-/** A key clamped to its spec range. The host binds bag values as stored, with
- *  no range check, so the shader clamps them as readParams does on the CPU. */
-const bounded = (key: string): string => {
+/** A key clamped to its range on `version`. The host binds bag values as
+ *  stored, with no range check, so the shader clamps them as readParams does
+ *  on the CPU. */
+const bounded = (key: string, version: number): string => {
   const spec = KEY_SPECS.find((s) => s.key === key);
   if (!spec) throw new Error(`[tone-levels] no spec for ${key}`);
-  return `clamp(${key}, ${glslLiteral(spec.min)}, ${glslLiteral(spec.max)})`;
+  const { min, max } = keyRange(spec, version);
+  return `clamp(${key}, ${glslLiteral(min)}, ${glslLiteral(max)})`;
 };
 
-const map = (channel: string, v: string) => {
-  const k = (field: string) => bounded(`${channel}${field}`);
+const map = (channel: string, v: string, version: number) => {
+  const k = (field: string) => bounded(`${channel}${field}`, version);
   return `tlMap(${v}, ${k("LowInput")}, ${k("HighInput")}, clampInput, 1.0 / ${k("Gamma")}, ${k("LowOutput")}, ${k("HighOutput")}, clampOutput)`;
 };
 
+const levels = (version: number) =>
+  `    v = vec3(${map("red", "v.r", version)}, ${map("green", "v.g", version)}, ${map("blue", "v.b", version)});
+    v = vec3(${map("value", "v.r", version)}, ${map("value", "v.g", version)}, ${map("value", "v.b", version)});`;
+
 const GATE = KEY_SPECS.map((s) => `${s.key} != ${glslLiteral(s.default)}`).join(" || ");
 
+// Version 1 keeps exactly the shader its photos were edited with.
 const GLSL = `
 {
   if (${GATE}) {
     vec3 v = linear > 0.5 ? tlDecode(c) : c;
-    v = vec3(${map("red", "v.r")}, ${map("green", "v.g")}, ${map("blue", "v.b")});
-    v = vec3(${map("value", "v.r")}, ${map("value", "v.g")}, ${map("value", "v.b")});
+#if SL_PROCESS_VERSION >= 2
+${levels(2)}
+#else
+${levels(1)}
+#endif
     c = linear > 0.5 ? tlEncode(v) : v;
   }
 }
@@ -68,7 +78,7 @@ function uniforms(): UniformDeclaration[] {
     key: s.key,
     glslType: "float",
     default: s.default,
-    range: { min: s.min, max: s.max, step: s.step },
+    range: { ...s.full, step: s.step },
     label: s.label,
   }));
 }

@@ -10,7 +10,7 @@ import { commitPick, patchColor, pickStillWanted, pointToUv, syncPickDrag } from
 import { initRuntime } from "../src/runtime";
 import type { FloatFrame } from "../src/safelight";
 import { initStore, store, type PickTarget } from "../src/store";
-import { fakeApi, fakeBitmap, type Rig } from "./support/fake-api";
+import { fakeApi, fakeBitmap, versionedParams, type Rig } from "./support/fake-api";
 
 function frame(w: number, h: number, at: (x: number, y: number) => [number, number, number]): Uint8ClampedArray {
   const data = new Uint8ClampedArray(w * h * 4);
@@ -81,12 +81,32 @@ describe("commitPick", () => {
     expect(store().getState().picking).toBeNull();
   });
 
-  it("applies a selected-channel pick to the channel the dialog shows", () => {
+  it("applies a selected-channel pick to the channel the dialogue shows", () => {
     store().getState().setChannel("blue");
     commitPick({ point: "black", scope: "channel" }, [0.1, 0.2, 0.3]);
     const p = readParams(rig.develop.getState().paramBag);
     expect(p.channels.blue.lowInput).toBe(0.3);
     expect(p.channels.red).toEqual(DEFAULT_CHANNEL);
+  });
+
+  it("keeps over-range picks on a version 2 photo through later picks", () => {
+    rig.develop.setState({ params: versionedParams(2) });
+    store().getState().setChannel("red");
+    commitPick({ point: "white", scope: "channel" }, [1.6, 0.5, 0.5]);
+    store().getState().setChannel("green");
+    commitPick({ point: "black", scope: "channel" }, [0.1, -0.05, 0.1]);
+    const bag = rig.develop.getState().paramBag;
+    expect(bag[qualified("redHighInput")]).toBe(1.6);
+    expect(bag[qualified("greenLowInput")]).toBe(-0.05);
+    expect(readParams(bag, 2).channels.red.highInput).toBe(1.6);
+  });
+
+  it("reads earlier picks within 0..1 on a version 1 photo, as before", () => {
+    store().getState().setChannel("red");
+    commitPick({ point: "white", scope: "channel" }, [1.6, 0.5, 0.5]);
+    store().getState().setChannel("green");
+    commitPick({ point: "black", scope: "channel" }, [0.1, 0.2, 0.1]);
+    expect(rig.develop.getState().paramBag[qualified("redHighInput")]).toBe(1);
   });
 });
 
@@ -176,6 +196,17 @@ describe("the pick-drag tool", () => {
     expect(rig.commits).toEqual(["Tone Levels pick white point"]);
     expect(store().getState().picking).toBeNull();
     expect(rig.held()).toBeNull();
+  });
+
+  it("stores a highlight above 1 as picked on a version 2 photo", async () => {
+    arm({}, halves([1.6, 1.2, 0.9]));
+    rig.develop.setState({ params: versionedParams(2) });
+    rig.held()?.onPress?.({ x: 30, y: 10 });
+    await settle();
+    const p = readParams(rig.develop.getState().paramBag, 2);
+    expect(p.channels.red.highInput).toBeCloseTo(1.6, 6);
+    expect(p.channels.green.highInput).toBeCloseTo(1.2, 6);
+    expect(p.channels.blue.highInput).toBeCloseTo(0.9, 6);
   });
 
   it("reads linear floats in Linear mode, as they are", async () => {

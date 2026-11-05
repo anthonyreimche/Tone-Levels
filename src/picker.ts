@@ -10,7 +10,7 @@
 import { applyPick } from "./config";
 import { capturePreLevels, capturePreLevelsFloat } from "./capture";
 import { decodePerceptual, type Rgb } from "./model";
-import { bagPatch, readParams } from "./params";
+import { bagPatch, processVersion, readParams } from "./params";
 import { api } from "./runtime";
 import type { CanvasPoint, FloatFrame, PickDragTool } from "./safelight";
 import { store, type PickTarget } from "./store";
@@ -83,7 +83,7 @@ const PICK_LABEL = { black: "black point", grey: "grey point", white: "white poi
 export function commitPick(target: PickTarget, rgb: Rgb): void {
   const dev = api().stores.useDevelopStore.getState();
   const ui = store().getState();
-  const p = readParams(dev.paramBag);
+  const p = readParams(dev.paramBag, processVersion(dev.params));
   dev.setDynParams(bagPatch(applyPick(p, target.point, target.scope, ui.channel, rgb)));
   void dev.commitEdit(`Tone Levels pick ${PICK_LABEL[target.point]}`);
   ui.setPicking(null);

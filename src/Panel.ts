@@ -1,4 +1,4 @@
-// The Develop panel: GIMP's Levels dialog in the right rail. Handle drags
+// The Develop panel: GIMP's Levels dialogue in the right rail. Handle drags
 // write the bag live and commit on release; a field writes nothing while it is
 // typed in and applies its clamped value on Enter or blur, once, with one
 // commit; buttons, toggles and the mode switch commit at once. A field shows
@@ -19,12 +19,13 @@ import {
   INPUT_HANDLES,
   dragInput,
   dragOutput,
+  inputAxis,
   inputHandlePositions,
   outputHandlePositions,
 } from "./handles";
 import { histogramsFromRgba } from "./histogram";
 import { CHANNELS, GAMMA_MAX, GAMMA_MIN, clamp, withChannel, type Channel, type ChannelLevels, type LevelsParams } from "./model";
-import { bagPatch, readParams } from "./params";
+import { bagPatch, inputRange, processVersion, readParams, type Range } from "./params";
 import { api, h } from "./runtime";
 import { store } from "./store";
 
@@ -62,6 +63,8 @@ export function LevelsPanel() {
   const scope = api().develop.useParamScope();
   const inMask = scope.maskId !== null;
   const photoId = dev((s) => s.photoId);
+  const version = dev((s) => processVersion(s.params));
+  const range = inputRange(version);
   const measured = store()((s) => s.frame);
   const channel = store()((s) => s.channel);
   const scale = store()((s) => s.scale);
@@ -69,6 +72,7 @@ export function LevelsPanel() {
   const holdsPickDrag = api().develop.usePickDragHeld();
   const typed = useRef<TypedEdit | null>(null);
   const [draft, setDraft] = useState<{ label: string; value: number } | null>(null);
+  const [heldAxis, setHeldAxis] = useState<Range | null>(null);
 
   useEffect(() => (inMask ? undefined : startLiveSampler()), [inMask]);
   useEffect(() => (inMask ? undefined : () => store().getState().setPicking(null)), [inMask]);
@@ -77,8 +81,11 @@ export function LevelsPanel() {
     if (!inMask && !holdsPickDrag) store().getState().setPicking(null);
   }, [inMask, holdsPickDrag]);
 
-  const p = readParams(scope.getParams());
+  const p = readParams(scope.getParams(), version);
   const ch = p.channels[channel];
+  // A drag holds the axis it started on: refitting it under the pointer would
+  // move the handle away from it.
+  const axis = heldAxis ?? inputAxis(ch);
   const frame = measured && measured.photoId === photoId ? measured.readback : null;
   const hist = useMemo(
     () => (frame ? histogramsFromRgba(frame.data, frame.width, frame.height, p.linear) : null),
@@ -87,7 +94,7 @@ export function LevelsPanel() {
 
   // Drags outrun React's renders, so each change starts from the bag the
   // scope holds now rather than this render's snapshot.
-  const live = (): LevelsParams => readParams(scope.getParams());
+  const live = (): LevelsParams => readParams(scope.getParams(), version);
   const apply = (next: LevelsParams) => scope.setParams(bagPatch(next));
   const commit = (what: string) => scope.commit(`Tone Levels ${what}`);
   const editChannel = (update: (c: ChannelLevels) => ChannelLevels) => {
@@ -234,13 +241,20 @@ export function LevelsPanel() {
       Section,
       { title: "Input Levels" },
       gutter(
-        inMask ? null : h(HistogramView, { bins: hist ? hist[channel] : null, scale, channel }),
-        h(GradientBar, { background: inputBarGradient(p, channel), label: "Input levels" }),
+        inMask ? null : h(HistogramView, { bins: hist ? hist[channel] : null, scale, channel, axis }),
+        h(GradientBar, { background: inputBarGradient(p, channel, axis), label: "Input levels" }),
         h(HandleBar, {
           label: "Input levels handles",
           positions: inputHandlePositions(ch),
-          onDrag: (i: number, pos: number) => editChannel((c) => dragInput(c, INPUT_HANDLES[i], pos)),
-          onRelease: () => commit("input levels"),
+          axis,
+          onDrag: (i: number, pos: number) => {
+            setHeldAxis((held) => held ?? axis);
+            editChannel((c) => dragInput(c, INPUT_HANDLES[i], pos, range));
+          },
+          onRelease: () => {
+            setHeldAxis(null);
+            commit("input levels");
+          },
         }),
       ),
       h(
@@ -250,13 +264,13 @@ export function LevelsPanel() {
           Row,
           { gap: 2 },
           inMask ? null : pickButton("black", "channel"),
-          field("Low input", shown(ch.lowInput), 1, (c, v) => ({ ...c, lowInput: clamp(v / DISPLAY_SCALE, 0, c.highInput) })),
+          field("Low input", shown(ch.lowInput), 1, (c, v) => ({ ...c, lowInput: clamp(v / DISPLAY_SCALE, range.min, c.highInput) })),
         ),
         field("Gamma", Math.round(ch.gamma * 100) / 100, 0.01, (c, v) => ({ ...c, gamma: clamp(v, GAMMA_MIN, GAMMA_MAX) })),
         h(
           Row,
           { gap: 2 },
-          field("High input", shown(ch.highInput), 1, (c, v) => ({ ...c, highInput: clamp(v / DISPLAY_SCALE, c.lowInput, 1) })),
+          field("High input", shown(ch.highInput), 1, (c, v) => ({ ...c, highInput: clamp(v / DISPLAY_SCALE, c.lowInput, range.max) })),
           inMask ? null : pickButton("white", "channel"),
         ),
       ),

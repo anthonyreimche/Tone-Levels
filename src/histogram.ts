@@ -1,4 +1,4 @@
-// GIMP's histogram as the Levels dialog shows it (app/core/gimphistogram.c,
+// GIMP's histogram as the Levels dialogue shows it (app/core/gimphistogram.c,
 // app/widgets/gimphistogramview.c), over an 8-bit sRGB frame: 256 bins per
 // channel, each value rounded into its bin in the active TRC, Value binned at
 // max(r, g, b).

@@ -10,6 +10,7 @@
 // From app/tools/gimplevelstool.c and app/widgets/gimphandlebar.c.
 
 import { GAMMA_MAX, GAMMA_MIN, clamp, type ChannelLevels } from "./model";
+import { UNIT, type Range } from "./params";
 
 /** GIMP's display factor on an 8-bit image: the fields show 0–255. */
 export const DISPLAY_SCALE = 255;
@@ -60,8 +61,10 @@ export function pickHandle(positions: readonly (number | null)[], x: number): nu
   return active;
 }
 
-export function dragInput(ch: ChannelLevels, handle: InputHandle, pos: number): ChannelLevels {
-  const x = clamp(pos, 0, 1);
+/** `range` is where the input points may sit: 0..1, or wider on a photo whose
+ *  image runs past it. */
+export function dragInput(ch: ChannelLevels, handle: InputHandle, pos: number, range: Range = UNIT): ChannelLevels {
+  const x = clamp(pos, range.min, range.max);
   if (handle === "low") return { ...ch, lowInput: Math.min(x, ch.highInput) };
   if (handle === "high") return { ...ch, highInput: Math.max(x, ch.lowInput) };
   const gamma = gammaFromHandle(ch, x);
@@ -80,6 +83,21 @@ export function inputHandlePositions(ch: ChannelLevels): [number, number, number
 export function outputHandlePositions(ch: ChannelLevels): [number, null, number] {
   return [ch.lowOutput, null, ch.highOutput];
 }
+
+/** The values the input bar spans: 0..1, widened to take in black or white
+ *  points outside it. */
+export function inputAxis(ch: ChannelLevels): Range {
+  return {
+    min: Math.min(0, ch.lowInput, ch.highInput),
+    max: Math.max(1, ch.lowInput, ch.highInput),
+  };
+}
+
+/** A value → its position along a bar spanning `axis`, 0 at the left end. */
+export const toBar = (axis: Range, v: number): number => (v - axis.min) / (axis.max - axis.min);
+
+/** A position along a bar spanning `axis` → its value. */
+export const fromBar = (axis: Range, x: number): number => axis.min + x * (axis.max - axis.min);
 
 /** Pointer x → position along the bar. clientX and the box are both in
  *  client px, so the interface scale (body zoom) cancels out. */

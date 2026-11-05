@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// The Levels panel in a DOM: GIMP's dialog sections, a handle drag writing
+// The Levels panel in a DOM: GIMP's dialogue sections, a handle drag writing
 // live and committing once, black held at or below white, crossing output
 // handles, the grey handle following black and white, Reset Channel, the
 // 0–255 fields applying and committing once on Enter or blur (typing changes
@@ -21,7 +21,7 @@ import { syncPickDrag } from "../src/picker";
 import { initRuntime } from "../src/runtime";
 import type { DevelopParams } from "../src/safelight";
 import { initStore, store, type MeasureSignature } from "../src/store";
-import { fakeApi, fakeBitmap, type Rig } from "./support/fake-api";
+import { fakeApi, fakeBitmap, versionedParams, type Rig } from "./support/fake-api";
 
 beforeAll(() => {
   Element.prototype.setPointerCapture = () => undefined;
@@ -65,7 +65,7 @@ function gradient(): Uint8ClampedArray {
 }
 
 describe("LevelsPanel", () => {
-  it("lays out GIMP's dialog", () => {
+  it("lays out GIMP's dialogue", () => {
     mount();
     expect(screen.getByLabelText("Channel")).toBeTruthy();
     for (const title of ["Input Levels", "Output Levels", "All Channels"]) expect(screen.getByText(title)).toBeTruthy();
@@ -333,6 +333,67 @@ describe("LevelsPanel", () => {
     expect(rig.commits).toEqual(["Tone Levels linear"]);
     fireEvent.click(screen.getByText("Linear"));
     expect(rig.commits.length).toBe(1);
+  });
+});
+
+// On a version 2 photo the image runs past 0..1, so the input points may too;
+// the input axis grows to show them. Version 1 photos keep 0..1.
+describe("LevelsPanel on a version 2 photo", () => {
+  function mountAt(version: number, bag: Record<string, unknown> = {}) {
+    rig = fakeApi(bag);
+    rig.develop.setState({ params: versionedParams(version) });
+    initRuntime(rig.api);
+    initStore();
+    render(React.createElement(LevelsPanel));
+  }
+  const handle = (i: number) => screen.getByLabelText("Input levels handles").querySelector<SVGElement>(`[data-handle="${i}"]`);
+
+  it("shows a white point above 1 past 255 at the end of a widened axis", () => {
+    mountAt(2, { [qualified("valueHighInput")]: 1.6 });
+    expect(screen.getByLabelText<HTMLInputElement>("High input").value).toBe("408");
+    expect(Number(handle(2)?.getAttribute("data-pos"))).toBe(1.6);
+    expect(handle(2)?.style.left).toBe("100%");
+    expect(handle(0)?.style.left).toBe("0%");
+    expect(screen.getByLabelText("Histogram").getAttribute("viewBox")).toBe(`0 0 ${256 * 1.6} 64`);
+  });
+
+  it("applies High input typed past 255, and Low input typed below 0", () => {
+    mountAt(2);
+    const high = screen.getByLabelText<HTMLInputElement>("High input");
+    fireEvent.change(high, { target: { value: "408" } });
+    fireEvent.keyDown(high, { key: "Enter" });
+    const low = screen.getByLabelText<HTMLInputElement>("Low input");
+    fireEvent.change(low, { target: { value: "-51" } });
+    fireEvent.keyDown(low, { key: "Enter" });
+    const p = readParams(rig.develop.getState().paramBag, 2);
+    expect(p.channels.value.highInput).toBeCloseTo(1.6, 12);
+    expect(p.channels.value.lowInput).toBeCloseTo(-0.2, 12);
+    expect(high.value).toBe("408");
+    expect(low.value).toBe("-51");
+  });
+
+  it("holds the axis still while a handle drags, and fits it again on release", () => {
+    mountAt(2, { [qualified("valueHighInput")]: 1.6 });
+    const el = bar("Input levels handles");
+    fireEvent.pointerDown(el, { clientX: 255, pointerId: 1, button: 0 });
+    fireEvent.pointerMove(el, { clientX: 127.5, pointerId: 1 });
+    expect(readParams(rig.develop.getState().paramBag, 2).channels.value.highInput).toBeCloseTo(0.8, 12);
+    fireEvent.pointerMove(el, { clientX: 127.5, pointerId: 1 });
+    expect(readParams(rig.develop.getState().paramBag, 2).channels.value.highInput).toBeCloseTo(0.8, 12);
+    expect(handle(2)?.style.left).toBe("50%");
+    fireEvent.pointerUp(el, { pointerId: 1 });
+    expect(handle(2)?.style.left).toBe("80%");
+    expect(rig.commits).toEqual(["Tone Levels input levels"]);
+  });
+
+  it("keeps High input within 255 on a version 1 photo", () => {
+    mountAt(1);
+    const high = screen.getByLabelText<HTMLInputElement>("High input");
+    fireEvent.change(high, { target: { value: "408" } });
+    fireEvent.keyDown(high, { key: "Enter" });
+    expect(params().channels.value.highInput).toBe(1);
+    expect(high.value).toBe("255");
+    expect(screen.getByLabelText("Histogram").getAttribute("viewBox")).toBe("0 0 256 64");
   });
 });
 

@@ -1,7 +1,8 @@
 // The handle bars as GIMP runs them: where the grey handle sits for a gamma
 // and the gamma a grey handle stands for (against GIMP's C), which handle a
 // press takes (gimphandlebar.c), and the bounds GIMP's adjustments put on a
-// drag.
+// drag, inside 0..1 or the wider range a version 2 photo allows, on a bar
+// whose axis grows to show input points past 0..1.
 
 import { describe, expect, it } from "vitest";
 import vectors from "./reference/vectors.json";
@@ -9,13 +10,17 @@ import {
   barPosition,
   dragInput,
   dragOutput,
+  fromBar,
   gammaFromHandle,
   gammaHandlePosition,
+  inputAxis,
   inputHandlePositions,
   outputHandlePositions,
   pickHandle,
+  toBar,
 } from "../src/handles";
 import { DEFAULT_CHANNEL } from "../src/model";
+import { FULL_INPUT_RANGE } from "../src/params";
 
 const expectNear = (actual: number, expected: number) =>
   expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1e-12 * Math.max(1, Math.abs(expected)));
@@ -69,6 +74,13 @@ describe("dragInput", () => {
     expect(dragInput(ch, "high", 1.4).highInput).toBe(1);
   });
 
+  it("lets black and white leave 0..1 inside a wider range", () => {
+    expect(dragInput(ch, "high", 1.6, FULL_INPUT_RANGE).highInput).toBe(1.6);
+    expect(dragInput(ch, "low", -0.2, FULL_INPUT_RANGE).lowInput).toBe(-0.2);
+    expect(dragInput(ch, "high", 1e6, FULL_INPUT_RANGE).highInput).toBe(FULL_INPUT_RANGE.max);
+    expect(dragInput(ch, "low", 0.8, FULL_INPUT_RANGE).lowInput).toBe(0.6);
+  });
+
   it("moves the grey handle with black and white and leaves gamma alone", () => {
     const moved = dragInput({ ...DEFAULT_CHANNEL, gamma: 2 }, "low", 0.5);
     expect(moved.gamma).toBe(2);
@@ -99,6 +111,21 @@ describe("positions and pointer mapping", () => {
   it("puts the input handles at black, grey and white and hides the output bar's middle", () => {
     expect(inputHandlePositions(DEFAULT_CHANNEL)).toEqual([0, 0.5, 1]);
     expect(outputHandlePositions({ ...DEFAULT_CHANNEL, lowOutput: 0.1 })).toEqual([0.1, null, 1]);
+  });
+
+  it("widens the input axis from 0..1 to take in points outside it", () => {
+    expect(inputAxis(DEFAULT_CHANNEL)).toEqual({ min: 0, max: 1 });
+    expect(inputAxis({ ...DEFAULT_CHANNEL, highInput: 1.6 })).toEqual({ min: 0, max: 1.6 });
+    expect(inputAxis({ ...DEFAULT_CHANNEL, lowInput: -0.2, highInput: 0.5 })).toEqual({ min: -0.2, max: 1 });
+    expect(inputAxis({ ...DEFAULT_CHANNEL, lowInput: 1.3, highInput: 0.4 })).toEqual({ min: 0, max: 1.3 });
+  });
+
+  it("maps values to and from the bar through its axis", () => {
+    const axis = { min: -0.4, max: 1.6 };
+    expect(toBar(axis, 0.6)).toBeCloseTo(0.5, 12);
+    expect(fromBar(axis, 0.5)).toBeCloseTo(0.6, 12);
+    expect(fromBar(axis, 1)).toBe(1.6);
+    expect(toBar({ min: 0, max: 1 }, 0.25)).toBe(0.25);
   });
 
   it("maps a client x through the bar's own box, clamped to 0..1", () => {

@@ -1,5 +1,5 @@
 // Session state the panel and the eyedropper share: the newest pre-Levels
-// frame, the channel the dialog shows, the histogram scale and the armed
+// frame, the channel the dialogue shows, the histogram scale and the armed
 // picker. None of it is part of the edit. Built on the host's zustand
 // `create` so the components subscribe like core's.
 

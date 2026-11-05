@@ -18,6 +18,7 @@ import {
   type ChannelLevels,
   type LevelsParams,
 } from "../src/model";
+import { qualified, readParams } from "../src/params";
 
 const expectNear = (actual: number, expected: number) =>
   expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1e-12 * Math.max(1, Math.abs(expected)));
@@ -86,6 +87,27 @@ describe("levelsPixel", () => {
     expect(encodePerceptual(-0.2)).toBe(-encodePerceptual(0.2));
     expect(decodePerceptual(encodePerceptual(1.7))).toBeCloseTo(1.7, 12);
     expect(decodePerceptual(0.5)).toBeCloseTo(0.214041140482232, 12);
+  });
+});
+
+describe("over-range input points", () => {
+  const bag = { [qualified("valueHighInput")]: 1.6, [qualified("valueLowInput")]: -0.2 };
+
+  it("maps a white point above 1 to 1 and a black point below 0 to 0 on version 2", () => {
+    const p = readParams(bag, 2);
+    expect(p.channels.value.highInput).toBe(1.6);
+    expect(p.channels.value.lowInput).toBe(-0.2);
+    const [white, black, mid] = levelsPixel([1.6, -0.2, 0.7], p);
+    expect(white).toBeCloseTo(1, 12);
+    expect(black).toBeCloseTo(0, 12);
+    expect(mid).toBeCloseTo(0.5, 12);
+  });
+
+  it("reads them as 1 and 0 on version 1, as before", () => {
+    const p = readParams(bag, 1);
+    expect(p.channels.value.highInput).toBe(1);
+    expect(p.channels.value.lowInput).toBe(0);
+    expect(levelsPixel([1.6, -0.2, 0.7], p)).toEqual([1.6, -0.2, 0.7]);
   });
 });
 

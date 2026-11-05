@@ -90,6 +90,10 @@ const ui: UiKit = {
 // The core's develop params are opaque to the extension; any object stands in.
 const PARAMS = {} as DevelopParams;
 
+/** Develop params carrying only a process version. */
+export const versionedParams = (processVersion: number): DevelopParams =>
+  ({ processVersion }) as Record<string, unknown> as DevelopParams;
+
 export function fakeBitmap(width = 2, height = 2): ImageBitmap {
   return { width, height, close: () => undefined };
 }
