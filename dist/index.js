@@ -1039,6 +1039,7 @@ function ct(e) {
 			order: 6.5,
 			width: 268
 		},
+		modules: ["develop"],
 		onReset: st,
 		mask: {
 			component: Re,

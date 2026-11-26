@@ -37,6 +37,7 @@ export function activate(host: SafelightAPI): void {
     component: LevelsPanel,
     // After core Tone Curve (order 6) by design, not by a registration-order tie.
     defaultDock: { module: "develop", direction: "right", order: 6.5, width: 268 },
+    modules: ["develop"],
     onReset: reset,
     // The same panel edits a mask's levels in the Masking panel's Adjust tab.
     mask: { component: LevelsPanel, owns: UNIFORM_KEYS.map(qualified) },
